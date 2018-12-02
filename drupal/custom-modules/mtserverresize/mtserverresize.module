@@ -1,0 +1,404 @@
+<?php
+// $Id$
+
+/*
+
+version history: 
+
+	100a105 (081221095111): this only worked if there is width and height one after the other near the beginning of the img tag. It has been modified and now works regardless of how the width and height are declared.
+
+*/
+
+require_once("./freshray/fr.string.i.php");
+
+/**
+ * Implementation of hook_filter_tips().
+ */
+function mtserverresize_filter_tips($delta, $format, $long = FALSE) {
+  switch ($delta) {
+    case 0:
+      if ($long) {
+        return t('mtserverresize');
+      }
+      else {
+        return t('mtserverresize');
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function mtserverresize_filter($op, $delta = 0, $format = -1, $text = '') {
+
+	$theInputText = $text;
+	$theOperation = $op;
+		// can be list, description, prepare, process, settings
+	$theFilter = $delta;
+
+  // The "list" operation provides the module an opportunity to declare both how
+  // many filters it defines and a human-readable name for each filter. Note that
+  // the returned name should be passed through t() for translation.
+  if ($theOperation == 'list') {
+    return array(0 => t('mt filter'));
+  }
+
+  // All operations besides "list" provide a $delta argument so we know which
+  // filter they refer to.
+  switch ($delta) {
+    case 0:
+      switch ($theOperation) {
+        // This description is shown in the administrative interface, unlike the
+        // filter tips which are shown in the content editing interface.
+        case 'description':
+          return t('mtserverresize.');
+
+        // We don't need the "prepare" operation for this filter, but it's required
+        // to at least return the input text as-is.
+        case 'prepare':
+          return $theInputText;
+
+        // The actual filtering is performed here. The supplied text should be
+        // returned, once any necessary substitutions have taken place.
+        case 'process':
+			return mtserverresize_process_text($theInputText);
+
+
+        // Filter settings for pathfilter.
+        case 'settings':
+          return mtserverresize_settings();
+      }
+      break;
+  }
+}
+
+/**
+ * Helper settings function for hook_filter('settings').
+ */
+function mtserverresize_settings() {
+  $form = array();
+  $form['pathfilter'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Internal path filter'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => FALSE,
+  );
+  $form['pathfilter']['pathfilter_link_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Convert internal paths to'),
+    '#options' => array('absolute' => t('Absolute links'), 'relative' => t('Relative links')),
+    '#default_value' => variable_get('pathfilter_link_type', 'absolute'),
+    '#description' => t('Should internal paths be transformed to absolute URLs, such as %absolute or relative paths, like %relative. Note that your changes may not appear until the cache has been cleared.', array('%absolute' => 'http://www.example.com/my-page', '%relative' => '/my-page')),
+  );
+  return $form;
+}
+
+$freshray_authorized = true;
+
+function mtserverresize_process_text($aText)
+{
+	try {
+	
+		$theText = $aText;
+		$theOrigText = $aText;
+		$theResizeFile = '/sites/all/modules/mtserverresize/resize.php';
+		$theResizeFileForPHP = ".$theResizeFile";
+	
+		// we need to transform all instances of
+		//
+		// 		<img width="252" height="183" align="left" src="/sites/all/files/Picture 4.png" alt="" />
+		//
+		//	to
+		//
+		//		<img width="252" height="183" align="left" src="$theResizeFile?/whatever" whatever />
+		//
+	
+		// note that in the following preg pattern, files which have .b are not processed because bmps are not supported by resize.
+	
+			// first, find all images
+			
+	
+		$theMatches = array();
+		preg_match_all('/<img [^>]*src="([^"]*)"[^>]*>/', $theOrigText, $theMatches);
+	
+		$theMatches = mtserverresize_rotate_array($theMatches);
+
+		$T .= " / found " .count($theMatches) . " matches (img tags)";
+		
+		foreach($theMatches as $theMatch) {
+		
+			$theImageTag = $theMatch[0];
+			$theSource = $theMatch[1];
+			$theSupportedFlag = false;
+	
+			$T .= " / now looking at the tag ($theImageTag) which has the source ($theSource)";
+	
+			if(!mtsserverresize_supported_type($theSource)) {
+	
+				$T .= " / It has been determined that ($theSource) is not supported";
+			
+				continue;
+			}
+	
+			$theReqdWidth = mtserverresize_get_width($theImageTag);
+			$theReqdHeight = mtserverresize_get_height($theImageTag);
+			
+			$T .= " / The reqd w and h are ($theReqdWidth) and ($theReqdHeight) ";
+	
+			if($theReqdWidth || $theReqdHeight) {
+				$theImageSizeArgs = array('originalimage=' . mtserverresize_absolute_orig_image($theSource));
+				
+				if($theReqdWidth) {
+					array_push($theImageSizeArgs, 'width=' . $theReqdWidth);
+				}
+	
+				if($theReqdHeight) {
+					array_push($theImageSizeArgs, 'height=' . $theReqdHeight);
+				}
+				
+				$theResizeFileWithArgs = $theResizeFile . '?' . implode('&', $theImageSizeArgs);
+				
+				$T .= " / Now inserting ($theResizeFileWithArgs) ";
+
+				$theText = mtserverresize_modify_tag($theText, $theImageTag, $theResizeFileWithArgs);
+			}
+		}
+		
+		if(!is_readable($theResizeFileForPHP)) {
+			$r = "<!--Sorry, an error occured with the server resize filter: the resize engine ($theResizeFile) is not avaiable for reading-->".$theOrigText;
+		} else {
+			$r = $theText;
+		}
+	
+		return $r;	
+	} catch(Exception $e) {
+		return '<!--mtserverresize 100a105 has an error to report -- ' . $e->getMessage() . ' -- the unmodified text has been returned -->' . $theOrigText;	
+	}
+}
+
+	/* returns true if the image is of a supported type*/
+function mtsserverresize_supported_type($aImage) {
+	if(!$aImage) {
+		throw new Exception('mtsserverresize_supported_type: aImage can\'t be null');
+	}
+
+	$r = _mtsserverresize_supported_type_($aImage);
+
+	return $r;
+}
+
+	/* returns the width of an image tag, can be either in style="width:", or width=""
+	*/
+function mtserverresize_get_width($aImageTag) {
+	
+	if(!$aImageTag) {
+		throw new Exception('mtserverresize_get_width: aImageTag can\'t be null');
+	}
+
+	$r = _mtserverresize_get_width_($aImageTag);
+
+	return $r;
+}
+
+	/* returns the height of an image tag, can be either in style="heigth:", or height=""
+	*/
+function mtserverresize_get_height($aImageTag) {
+
+	if(!$aImageTag) {
+		throw new Exception('mtserverresize_get_height: aImageTag can\'t be null');
+	}
+
+	$r = _mtserverresize_get_height_($aImageTag);
+	
+	return $r;
+}
+
+	/* common code for mtserverresize_get_height and mtserverresize_get_width. $theAxis must be 'height' or 'width'
+	*/
+function mtserverresize_get_abstract_size($aImageTag, $aAxis) {
+
+	if(!$aImageTag) {
+		throw new Exception('mtserverresize_get_abstract_size: aImageTag can\'t be null');
+	}
+	
+	if(!in_array($aAxis, array('width', 'height'))) {
+		throw new Exception('mtserverresize_get_abstract_size: aAxis must be "width" or "height", not (' . $aAxis . ')');
+	}
+
+	$r = _mtserverresize_get_abstract_size_($aImageTag, $aAxis);
+	
+	return $r;
+}
+
+	/* returns an image that begins with http:...
+	*/
+function mtserverresize_absolute_orig_image($aSource) {
+
+	if(!$aSource) {
+		throw new Exception('mtserverresize_absolute_orig_image: aSource can\'t be null');
+	}
+	
+	$r = _mtserverresize_absolute_orig_image_($aSource);
+	
+	if(!$r) {
+		throw new Exception('_mtserverresize_absolute_orig_image_: return can\'t be null');
+	}
+	
+	return $r;
+}
+
+	/* given a text, finds the image tag, and within it, replaces its src with the new source. Returns the modified text
+	*/
+function mtserverresize_modify_tag($aText, $aImageTag, $aNewSource) {
+
+	if(!$aText) {
+		throw new Exception('mtserverresize_modify_tag: aText can\'t be null');
+	}
+
+	if(!$aImageTag) {
+		throw new Exception('mtserverresize_modify_tag: aImageTag can\'t be null');
+	}
+
+	if(!$aNewSource) {
+		throw new Exception('mtserverresize_modify_tag: aNewSource can\'t be null');
+	}
+
+	if(!strstr($aText, $aImageTag)) {
+		throw new Exception('mtserverresize_modify_tag: aImageTag (' . $aImageTag . ') must be in aText');
+	}
+
+	$r = _mtserverresize_modify_tag_($aText, $aImageTag, $aNewSource);
+	
+	if(!strstr($r, $aNewSource)) {
+		throw new Exception('_mtserverresize_modify_tag_: aImageTag (' . $aNewSource . ') must be in r');
+	}
+
+	if(!$r) {
+		throw new Exception('_mtserverresize_modify_tag_: return can\'t be null');
+	}
+	
+	return $r;
+}
+
+	/* Implementation: returns the width of an image tag, can be either in style="width:", or width=""
+	*/
+function _mtserverresize_get_width_($aImageTag) {
+
+	$theImageTag = $aImageTag;
+	
+	$r = mtserverresize_get_abstract_size($aImageTag, 'width');
+
+	return $r;
+}
+
+	/* Implementation: returns the height of an image tag, can be either in style="heigth:", or height=""
+	*/
+function _mtserverresize_get_height_($aImageTag) {
+
+	$theImageTag = $aImageTag;
+
+	$r = mtserverresize_get_abstract_size($aImageTag, 'height');
+	
+	return $r;
+}
+
+	/* Implementattion: common code for mtserverresize_get_height and mtserverresize_get_width. $theAxis must be 'height' or 'width'
+	*/
+function _mtserverresize_get_abstract_size_($aImageTag, $aAxis) {
+
+	$theImageTag = $aImageTag;
+	$theAxis = $aAxis;
+	
+	$r = 0;
+	
+	$theRegexA = array('/' . $theAxis . ':([^;]*)/i', '/' . $theAxis . '="([^"]*)"/i');
+	
+	foreach($theRegexA as $theRegex) {
+		$theMatches = array();
+		
+		preg_match($theRegex, $theImageTag, $theMatches);
+		
+		$theSize = $theMatches[1];
+		
+		if($theSize) {
+			$r = $theSize;
+			break;
+		}
+	}
+	
+	return $r;
+}
+
+	/* Implementation: returns an image that begins with http:...
+	*/
+function _mtserverresize_absolute_orig_image_($aSource) {
+
+	$theSource = $aSource;
+
+	$r = 'http://qumbia.ca/' . $aSource;
+	
+	$r = str_replace('http://qumbia.ca/http://', 'http://', $r);
+	
+	return $r;
+}
+
+	/* Implementation: given a text, finds the image tag, and within it, replaces its src with the new source. Returns the modified text
+	*/
+function _mtserverresize_modify_tag_($aText, $aImageTag, $aNewSource) {
+
+	$theText = $aText;
+	$theImageTag = $aImageTag;
+	$theNewSource = $aNewSource;
+	$r = $theText;
+
+	$theNewImageTag = preg_replace('/src="[^"]*"/', 'src="' . $theNewSource . '"', $theImageTag);
+	
+	$r = str_replace($theImageTag, $theNewImageTag, $theText);
+	
+	return $r;
+}
+
+	/* Implementation: returns true if the image is of a supported type*/
+function _mtsserverresize_supported_type_($aImage) {
+
+	$theImage = $aImage;
+	$theSupportedTypes = array('jpg', 'jpeg', 'gif', 'JPG', 'JPEG', 'GIF');
+
+	foreach($theSupportedTypes as $theSupportedType) {
+		if(string_ends_with($theSupportedType, $theImage)) {
+			$r = true;
+		}
+	}
+		
+	return $r;
+}
+
+function mtserverresize_rotate_array($aArray) {
+
+	if(!is_array($aArray)) {
+		throw new Exception('mtserverresize_rotate_array: aArray must be an array, not (' . $aArray . ')');
+	}
+	
+	$r = _mtserverresize_rotate_array_($aArray);
+	
+	if(!is_array($r)) {
+		throw new Exception('_mtserverresize_rotate_array_: (' . $r . ') is not an array');
+	}
+	
+	return $r;
+}
+
+function _mtserverresize_rotate_array_($aArray) {
+
+	$theNumOldCols = $theNumNewRows = count($aArray[0]);
+	$theNumOldRows = $theNumNewCols = count($aArray);
+	
+	for($theNewRow = 0; $theNewRow < $theNumOldCols; $theNewRow++) {
+		for($theNewCol = 0; $theNewCol < $theNumOldRows; $theNewCol++) {
+			$r[$theNewRow][$theNewCol] = $aArray[$theNewCol][$theNewRow];
+		}	
+	}	
+
+	return $r;
+}

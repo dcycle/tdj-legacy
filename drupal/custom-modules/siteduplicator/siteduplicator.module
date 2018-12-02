@@ -1,0 +1,27 @@
+<?php
+// $Id$
+
+function siteduplicator_perm() {
+ return array('duplicate a site');
+} // function onthisdate_perm()
+
+function siteduplicator_view($node, $teaser = FALSE, $page = FALSE) {
+  if ($page) {
+    $breadcrumb = array();
+    $breadcrumb[] = array('path' => 'example', 'title' => t('example'));
+    $breadcrumb[] = array('path' => 'example/'. $node->field1,
+      'title' => t('%category', array('%category' => $node->field1)));
+    $breadcrumb[] = array('path' => 'node/'. $node->nid);
+    menu_set_location($breadcrumb);
+  }
+
+  $node = node_prepare($node, $teaser);
+  $node->content['myfield'] = array(
+    '#value' => theme('mymodule_myfield', $node->myfield),
+    '#weight' => 1,
+  );
+
+  return $node;
+}
+
+?>

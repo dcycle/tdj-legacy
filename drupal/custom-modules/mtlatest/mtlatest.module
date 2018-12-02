@@ -1,0 +1,158 @@
+<?php
+// $Id$
+
+/**
+* Display help and module information
+* @param path which path of the site we're displaying help
+* @param arg array that holds the current path as would be returned from arg() function
+* @return help text for the path
+*/
+function mtlatest_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case "admin/help#mtlatest":
+      $output = '<p>'.  t("Displays some latest news") .'</p>';
+      break;
+  }
+  return $output;
+} // function mtlatest_help
+
+/**
+* Valid permissions for this module
+* @return array An array of valid permissions for the mtlatest module
+*/
+
+function mtlatest_perm() {
+  return array('access latest content');
+} // function mtlatest_perm()
+
+/**
+* Generate HTML for the mtlatest block
+* @param op the operation from the URL
+* @param delta offset
+* @returns block HTML 
+*/
+function mtlatest_block($op='list', $delta=0) {
+  // listing of blocks, such as on the admin/block page
+ 
+ if ($op == "list") {
+    $block[0]["info"] = t("On This Date");
+    return $block;
+  } else if ($op == 'view') {
+
+	$block_content = mtlatest_get_latest_items_in_current_language();  
+ 
+    // check to see if there was any content before setting up the block
+    if ($block_content == '') {
+      // no content from a week ago, return nothing.
+      return;
+    }
+    // set up the block
+    $block['subject'] = 'Latest blog posts';
+    $block['content'] = $block_content;
+
+    return $block;
+  }
+}
+
+function mtlatest_get_latest_items_in_current_language() {
+
+		/**
+		
+		080304202008 title does not appear if there is no post.
+		080303152502 only content of the current locale appears now
+		080303143334 update: found a way to get the current language at http://drupal.org/node/208047
+		080303143333 looked everywhere for a way to get the current locale, but it is impossible -- we'll have to just make this english. But we still included a way to make it easy to change -- just change theLocale var at the very beginning.
+		080303143332 added a way to have a relevant more link
+		080303143331 added a way to make optional show date
+		080303143330 changed the initial vars to suit my needs
+		080303143329 taken from http://drupal.org/node/44854
+		
+		*/
+		
+		$theId = 2;
+		$myRelativeURLPrefix = "";
+		$myShowTitle = true;
+		$myMoreLink = "taxonomy/term/$theId"; // note that locale will automatically be added later
+		$myShowMoreInfo = false; // mediatribe.
+		$myTitle['fr'] = "Mon blogue";
+		$myTitle['en'] = "My Blog";
+		
+		$taxo_id_arr = array($theId);
+		$taxo_id = join($taxo_id_arr, ',');
+		$list_no = 5;
+		
+		/* don't modify anything under here unless you know what you are doing */
+		
+		global $language;
+		$theLocale = $language->language;
+		
+		$myMoreLink = $myRelativeURLPrefix."/".$theLocale."/".$myMoreLink;
+		
+		$theLocalized["more"]["en"] = "more";
+		$theLocalized["more"]["fr"] = "plus";
+		
+		/*$query = "SELECT DISTINCT n.nid, n.title, n.created
+		  FROM {node} n
+		  INNER JOIN {term_node} tn ON n.nid = tn.nid
+		  WHERE tn.tid IN ($taxo_id) AND n.status = 1
+		  ORDER BY n.created DESC
+		  LIMIT $list_no";*/
+		  
+		  //mediatribe get also language
+		
+		$query = "SELECT DISTINCT n.nid, n.title, n.created, n.language
+		  FROM {node} n
+		  INNER JOIN {term_node} tn ON n.nid = tn.nid
+		  WHERE tn.tid IN ($taxo_id) AND n.status = 1
+		  ORDER BY n.created DESC
+		  LIMIT $list_no";
+		
+		$sql = db_rewrite_sql($query);
+		$result = db_query($sql);
+		$items = array();
+		
+		while ($anode = db_fetch_object($result)) {
+		
+			// mediatribe continue if not of the current locale
+			
+			if($anode->language != $theLocale) continue;
+		
+		  $term_names = array();
+		  # gather, into $term_names, all the terms because of which this node was selected:
+		  foreach (taxonomy_node_get_terms($anode->nid) as $term) {
+			 if (in_array($term->tid, $taxos_id_arr))
+				 $term_names[] = $term->name;
+		  }
+		
+		//  $items[]= l($anode->title, "node/$anode->nid").
+		//   '<br /> (Category/ies: ' . join($term_names, ', ') .
+		//    ' - date added ' . format_date($anode->created, 'custom', 'd-m-Y') . ')';
+		
+		// mediatribe replaced the above by the following to make more info optional
+		
+			$theMoreInfo = $myShowMoreInfo?'<br /> (Category/ies: ' . join($term_names, ', ') .' - date added ' . format_date($anode->created, 'custom', 'd-m-Y') . ')':'';
+		
+			$items[] = l($anode->title, "node/$anode->nid").$theMoreInfo;
+		
+		}
+		
+		if(count($items)) {
+		
+			if($myShowTitle)
+			{
+				$r .= "<h2 class=\"title\">".$myTitle[$theLocale]."</h2>";
+			}
+		
+		  $r .= theme('item_list',$items) . 
+		  
+		  '<div class="more-link">[<a href="'.$myMoreLink.'">'.$theLocalized["more"][$theLocale].'</a>]</div>';
+		  
+		  
+		}
+		
+		if(!$r) $r .= "no posts for ";
+		
+		return $r;
+		
+}

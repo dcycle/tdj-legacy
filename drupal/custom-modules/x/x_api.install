@@ -1,0 +1,43 @@
+<?php
+// $Id$
+
+/*
+  I used customdestination.module as a basis to design this file. It contains database information to set up on install and get rid of on uninstall. 
+*/
+
+function x_api_schema() {
+  $schema['x_api'] = array(
+    'description' => t('Table which stores serialized Exceptions.'),
+    'fields' => array(
+      'id' => array(
+        'description' => t('The id of this line. This is simply incremental.'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'e' => array(
+        'description' => t('The exception stored as serialized.'),
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+        'default' => ''),
+      'more' => array(
+        'description' => t('More info related to this exception.'),
+        'type' => 'text',
+        'size' => 'big',)
+      ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}
+
+function x_api_install() {
+  // Create my tables.
+  drupal_install_schema('x_api');
+}
+
+function x_api_uninstall() {
+  // Drop my tables.
+  drupal_uninstall_schema('x_api');
+  variable_del('x_api_sendinfo');
+}

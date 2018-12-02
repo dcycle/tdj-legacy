@@ -1,0 +1,1885 @@
+<?php
+// $Id: petition.module,v 1.1.2.17 2009/10/25 12:39:25 gauvain Exp $
+
+/**
+* @file
+* Provides a "petition" node type
+* 
+* @author Samuel Gauvain <gauvain@kth.se>
+*/
+
+
+/**
+* implementation of hook_signaturedisplay_info().
+*/
+
+function petition_signaturedisplay_info() {
+
+//the 0none means that the signature will not be displayed to the public. The petition maintainer fill be able to see it, the function to dispaly it is the one of 1default
+ $signaturedisplay_info['0none'] = array(
+   'name' => t('Do not display the signatures to the public'),
+   'default' => FALSE, // If True, the petition nodes created on the website will have this display mode as the default
+   'callback' => 'default_signature_display' // Name of the function that returns the signatures
+   );
+  
+//the 1default is the basic display of this moudle
+ $signaturedisplay_info['1default'] = array(
+   'name' => t('Normal display'),
+   'default' => FALSE, // If True, the petition nodes created on the website will have this display mode as the default
+   'callback' => 'default_signature_display' // Name of the function that returns the signatures
+   );
+  return $signaturedisplay_info;
+}
+
+/**
+* implementation of hook_node_info().
+*/
+
+function petition_node_info() {
+// We return an array since a module can define multiple node types.
+// We only define one node type : petition.	
+ return array(
+ 'petition' => array(
+  'name' => t('Petition'), 
+  'module' => 'petition', 
+  'description' => t('Create online petitions'), 
+  'has_title' => TRUE, 
+  'title_label' => t('Title'), 
+  'has_teaser' => TRUE, 
+  'teaser_label' => t('Short presentation'), 
+  'has_body' => TRUE, 
+  'body_label' => t('Petition Teaser and Body'), 
+  'locked' => TRUE
+  )
+ );
+}
+
+/**
+* implementation of hook_perm().
+*/
+
+function petition_perm() {
+return array("sign petitions", "create petitions", "edit own petition", "edit petitions", "administer petitions", "administer own petition", "clear petition results", "view signatures");
+}
+
+/**
+* implementation of hook_access().
+*/
+
+function petition_access($op, $node, $account) {
+switch ($op) {
+ case "create":
+   return user_access("create petitions", $account);
+ case "update":
+ case "delete":  
+   return (user_access("edit petitions", $account) || (user_access("edit own petition", $account) && ($account->uid == $node->uid)));	
+ }
+}
+
+/**
+ * Menu loader callback.
+ */
+function petition_menu_load($nid) {
+ if (!is_numeric($nid)) {
+ return FALSE;
+ }
+ $node = node_load($nid);
+ if (!isset($node->type) || $node->type != 'petition') {
+ return FALSE;
+ }
+ return $node;
+}
+
+/**
+* implementation of hook_menu().
+*/
+
+function petition_menu() {
+ global $user;
+ $items = array();
+ 
+ //Petition listings
+ $items['admin/content/petition']=array(
+ 'title' => 'Petition List', 
+ 'page callback' => 'petition_content_page', 
+ 'access callback' => 'user_access', 
+ 'access arguments' => array('administer petition'), 
+ 'description' => t('View and edit all the available petitions on your site'), 
+ 'type' => MENU_NORMAL_ITEM			
+ );
+      
+ //Petition list per user
+ $items['user/%user/petition']=array(
+ 'title' => 'Petition list', 
+ 'page callback' => 'petition_content_user_page', 
+ 'page arguments' => array(1), 
+ 'access callback' => 'user_access', 
+ 'access arguments' => array('create petitions'), 
+ 'description' => t('View and edit your petitions'), 
+ 'type' => MENU_LOCAL_TASK
+ );
+	
+ //Petition admin settings
+ $items['admin/settings/petition']=array(
+ 'title' => 'Petition Settings', 
+ 'page callback' => 'drupal_get_form', 
+ 'page arguments' => array('petition_admin_settings'), 
+ 'access callback' => 'user_access', 
+ 'access arguments' => array('administer petition'), 
+ 'description' => t('Global configuration of the petition settings'), 
+ 'type' => MENU_NORMAL_ITEM		
+ );
+
+ //'Petition_confirmation_page' CALLBABCK, to confirm the signatures.
+ $items['petition/signature/confirmation']=array(
+ 'title' => 'signature confirmation', 
+ 'page callback' => 'petition_confirmation_page', 
+ 'access callback' => 'user_access', 
+ 'access arguments' => array('sign petitions'), 
+ 'type' => MENU_CALLBACK
+ );
+	
+ //Petition view signatures
+ $items['node/%petition_menu/signatures']=array(
+ 'title' => 'Signatures', 
+ 'page callback' => 'petition_signature_page', 
+ 'page arguments' => array(1), 
+ 'access callback' => 'petition_signature_access', 
+ 'access arguments' => array(1),
+ 'weight' => 1,
+ 'type' => MENU_LOCAL_TASK		
+ );
+ 
+ //Petition download results. Only for the superbosses or the petition maintainer		
+ $items['node/%petition_menu/result']=array(
+ 'title' => 'Download results', 
+ 'page callback' => 'petition_result_page', 
+ 'page arguments' => array(1), 
+ 'access callback' => 'petition_maintainer_access', 
+ 'access arguments' => array(1),
+ 'weight' => 2,
+ 'type' => MENU_LOCAL_TASK		
+ );
+
+ //Clear the signatures				
+ $items['node/%petition_menu/clear']=array(
+ 'title' => 'Clear signatures', 
+ 'page callback' => 'petition_clear_signatures', 
+ 'page arguments' => array(1), 
+ 'access callback' => 'petition_clearsignature_access', 
+ 'access arguments' => array(1),
+ 'weight' => 4,
+ 'type' => MENU_LOCAL_TASK		
+ );
+ 
+ //Administer the signatures			
+ $items['node/%petition_menu/signatures-admin']=array(
+ 'title' => 'Administer Signatures', 
+ 'page callback' => 'petition_signatures_admin_page', 
+ 'page arguments' => array(1), 
+ 'access callback' => 'petition_maintainer_access', 
+ 'access arguments' => array(1),
+ 'file' => 'petition-signatures-admin.inc',
+ 'weight' => 3,
+ 'type' => MENU_LOCAL_TASK		
+ );
+	
+ return $items;			
+}
+
+function petition_signature_access($node) {
+  Global $user;
+  if ($node->display_mode == '0none') {
+   $access = user_access('edit own petition', $user) && ($user->uid == $node->uid);
+  } else {
+   $access = node_access('view',$node, $user);
+  }
+  return $access;
+}
+
+function petition_maintainer_access($node) {
+  Global $user;
+  if (is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $access = FALSE;
+  } else {
+    $access = (user_access('administer own petition', $user) && ($user->uid == $node->uid)) || user_access('administer petitions', $user);
+  }
+  return $access;
+}
+
+function petition_clearsignature_access($node) {
+  Global $user;
+  if (is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $access = FALSE;
+  } else {
+    $access = (user_access('clear petition results', $user) && user_access('administer own petition', $user) && ($user->uid == $node->uid));
+  }
+  return $access;
+}
+
+/**
+* petition_admin_settings().
+*/
+
+function petition_admin_settings() {
+ // Geographic Settings
+ $form['petition_geography'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Petitions geographic properties'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#description' => t('If you have the IP to country (IP2CC) and the countries api modules enabled, you can enable the country restriction and the country check property'), 
+ '#weight' => -10, 
+ );
+ 
+ if (module_exists("ip2cc") AND module_exists("countries_api")) {
+ $form['petition_geography']['petition_country_check'] = array(
+  '#title' => t('Country check'), 
+  '#description' => t("If enabled, this will allow users to create petitions checking a petitioner's IP address  corresponds to the country he/she entered in his/her signature. This is a way of reducing fraud."), 
+  '#type' => 'checkbox', 
+  '#return_value' => 1, 
+  '#default_value' => variable_get('petition_country_check', 1), 
+  '#weight' => 0
+  );
+ $form['petition_geography']['petition_country_restriction'] = array(
+  '#title' => t('Country restriction'), 
+  '#description' => t("If enabled, it will allow users to create petitions that can only be signed from the chosen countries. This is a way of keeping internal affairs more internal."), 
+  '#type' => 'checkbox', 
+  '#return_value' => 1, 
+  '#default_value' => variable_get('petition_country_restriction', 1), 
+  '#weight' => 1
+  );
+ }
+ 
+ //petitions fields
+ $form['petition_fields'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Petitions fields'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#weight' => -8
+ );
+ $form['petition_fields']['petition_signature_fields'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Fields included in the signature form'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#description' => t('Choose the signature fields a petition author should be allowed to set in their petition.'), 
+ '#weight' => 0
+ );
+ $form['petition_fields']['petition_signature_fields'] ['petition_signature_fields_form']= array(
+ '#type' => 'checkboxes', 
+ '#title' => t('Report fields'), 
+ '#options' => array('name' => t('Surname'), 'firstname' => t('First name'), 'title' => t('Other (activity, status etc)'), 'address' => t('Address'), 'zip' => t('ZIP code'), 'town' => t('Town'), 'country' => t('Country'), 'tel' => t('Phone number'), 'canbe_informed' => t('Accept to be informed of the campaign')), 
+ '#default_value' => variable_get('petition_signature_fields_form', array('name', 'firstname', 'title', 'zip', 'town', 'country', 'canbe_informed')), 
+ '#weight' => 1
+ );
+ $form['petition_fields']['petition_report_fields'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Fields included in the petition reports'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#description' => t("Choose the fields you want to include in the exportable reports. You might not want the author to be able to export all the collected fields (ie the petitioner's email address) in order to protect the petitioners' privacy "), 
+ '#weight' => 1
+ );
+ $form['petition_fields']['petition_report_fields'] ['petition_report_fields_fields']= array(
+ '#type' => 'checkboxes', 
+ '#title' => t('included fields'), 
+ '#options' => array('position' => t('Signature position'), 'name' => t('Surname'), 'firstname' => t('First name'), 'title' => t('Other (activity, status etc)'), 'address' => t('Address'), 'zip' => t('ZIP code'), 'town' => t('Town'), 'country' => t('Country'), 'tel' => t('Phone number'), 'email' => t('Email'), 'canbe_informed' => t('Accept to be informed of the campaign'), 'language' => t('language')), 
+ '#default_value' => variable_get('petition_report_fields_fields', array('position', 'name', 'firstname', 'title', 'zip', 'town', 'country', 'canbe_informed', 'language')), 
+ '#required' => TRUE, 
+ '#weight' => 1
+ );
+ //email to petition maintainer
+ $form['petition_email'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Petition emails'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#weight' => -7
+ );
+ $form['petition_email'] ['update_email'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Petition email for regular update on the amount of signatures'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#weight' => -7
+ );
+ 
+ $defaultsubject = getdefault("update_email_subject");
+ $form['petition_email']['update_email']['petition_emailsubject_to_maintainer'] = array(
+ '#type' => 'textfield', 
+ '#title' => t('Email subject to maintainer'), 
+ '#default_value' => variable_get('petition_emailsubject_to_maintainer', $defaultsubject), 
+ '#description' => t('Customized email subject to a petition author to tell them how many signatures the petition has reached.'). getdefault("description_maintainer_mail"), 
+ '#weight' => 1
+ );
+ $defaultbody = getdefault("update_email_body");
+ $form['petition_email']['update_email']['petition_emailbody_to_maintainer'] = array(
+ '#type' => 'textarea', 
+ '#title' => t('Email message to maintainer'), 
+ '#default_value' => variable_get('petition_emailbody_to_maintainer', $defaultbody), 
+ '#description' => t('Customized email body to a petition author to tell them how many signatures the petition has reached.'). getdefault("description_maintainer_mail"), 
+ '#weight' => 1
+ );
+ 
+  $form['petition_email'] ['campaign_email'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Petition email announcing the end of the campaign'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#weight' => -5
+ );
+ 
+ $defaultsubject = getdefault("campaing_is_over_email_subject");
+ $form['petition_email']['campaign_email']['campaign_emailsubject_to_maintainer'] = array(
+ '#type' => 'textfield', 
+ '#title' => t('Email subject to maintainer'), 
+ '#default_value' => variable_get('campaign_emailsubject_to_maintainer', $defaultsubject), 
+ '#description' => t('Customized email subject to a petition author to inform them the petition campaign is over.'). getdefault("description_maintainer_mail"), 
+ '#weight' => 1
+ );
+ $defaultbody=getdefault("campaing_is_over_email_body");
+ $form['petition_email']['campaign_email']['campaign_emailbody_to_maintainer'] = array(
+ '#type' => 'textarea', 
+ '#title' => t('Email message to maintainer'), 
+ '#default_value' => variable_get('campaign_emailbody_to_maintainer', $defaultbody), 
+ '#description' => t('Customized email subject to a petition author to inform them the petition campaign is over.'). getdefault("description_maintainer_mail"), 
+ '#weight' => 1
+ );
+ 
+ //other settings
+ $form['petition_other'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Other settings'), 
+ '#collapsible' => TRUE, 
+ '#collapsed' => FALSE, 
+ '#weight' => -8
+ );
+ $form['petition_other']['petition_signature_number'] = array(
+ '#type' => 'select', 
+ '#title' => t('Number of signatures displayed per page'), 
+ '#options' => array(25 => '25', 50 => '50', 75 => '75', 100 => '100', 125 => '125', 150 => '150', 175 => '175', 200 => '200', 225 => '225', 250 => '250', 275 => '275', 200 => '200'),
+ '#default_value' => variable_get('petition_signature_number', 50),
+ '#weight' => 1
+ );
+	
+ return system_settings_form($form);
+
+}
+
+
+/**
+* petition_content_page().
+* "view and edit all available petitions on the site";
+*/
+
+function petition_content_page() {
+$header = array(
+ t('Title'), 
+ array('data' => t('View'), 'colspan' => '3'), 
+ array('data' => t('Operations'), 'colspan' => '2')
+ );
+
+ $result = db_query("SELECT nid, uid, title FROM {node} WHERE type='petition'");
+
+ while ($node = db_fetch_object($result)) {
+ $row = array(l($node->title, 'node/'. $node->nid));
+ $row[] = user_access('sign petitions') ? l(t('Signatures'), 'node/'. $node->nid .'/signatures') : '';
+ $row[] = user_access('edit own petitions') ? l(t('Result'), 'node/'. $node->nid .'/result') : '';
+ $row[] = node_access('update', $node) ? l(t('Edit'), 'node/'. $node->nid .'/edit') : '';
+ $row[] = user_access('edit own petitions') ? l(t('Clear'), 'node/'. $node->nid .'/clear') : '';
+ $rows[] = $row;
+ }
+
+ $content = theme('table', $header, $rows);
+ drupal_set_title(t('Petition list'));
+ return $content;
+}
+
+/**
+* petition_content_user_page().
+* "view and edit all the petitions of a user";
+*/
+function petition_content_user_page($user) {
+ $header = array(
+ t('Title'), 
+ array('data' => t('View'), 'colspan' => '3'), 
+ array('data' => t('Operations'), 'colspan' => '2')
+ );
+
+ $result = db_query("SELECT nid, title FROM {node} WHERE type='petition' and uid = %d", $user->uid);
+
+ while ($node = db_fetch_object($result)) {
+ $row = array(l($node->title, 'node/'. $node->nid));
+ $row[] = user_access('sign petitions') ? l(t('Signatures'), 'node/'. $node->nid .'/signatures') : '';
+ $row[] = user_access('edit own petitions') ? l(t('Result'), 'node/'. $node->nid .'/result') : '';
+ $row[] = node_access('update', $node) ? l(t('Edit'), 'node/'. $node->nid .'/edit') : '';
+ $row[] = user_access('edit own petitions') ? l(t('Clear'), 'node/'. $node->nid .'/clear') : '';
+ $rows[] = $row;
+ }
+
+ $content = theme('table', $header, $rows);
+ drupal_set_title(t('My petitions'));
+ return $content;
+}
+
+/**
+* Hook_user to add the personal petition page to the user view.
+*/
+function petition_user($op, &$edit, &$user) {
+ If ($op == "view" && user_access('create petitions', $user)) {
+ $user->content['summary']['petition']=array(
+  '#type' => 'user_profile_item', 
+  '#title' => t('My Petitions'), 
+  '#value' => l(t('View and edit my petitions'), 'user/'. $user->uid .'/petition')
+  );
+ return array(t('My petitions') => $items);
+ }
+}
+
+/**
+* implementation of hook_form().
+* form for the creation of the petition.
+* enable to choose country restriction and add different languages.
+*/
+
+function petition_form(&$node, &$param) {
+   
+  //If this is a translation, only the email settings should appear
+  if (isset($_GET['translation']) OR (is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid)) {
+  
+    if (is_numeric($_GET['translation']) AND $_GET['translation']>0) {
+     $translation_source = node_load($_GET['translation']);
+    } else {
+     $translation_source = node_load($node->tnid);
+    }
+  
+  $form['translated_emails']=array(
+       '#type' => 'fieldset', 
+       '#title' => t('Translation of the body and the subject of the confirmation email'), 
+       '#collapsible' => TRUE, 
+       '#collapsed' => FALSE, 
+       '#weight' => -2	
+      );
+  
+  if (isset($node->tsubjects[$node->language])) {
+   $defaultsubject = $node->tsubjects[$node->language];
+  }
+  else {
+   $defaultsubject = getdefault("confirmation_email_subject");
+   $defaultsubject = t($defaultsubject, array(), $node->language);
+  }
+  $languages = language_list();
+  $form['translated_emails'] ['original_email_subject']= array(
+   '#type' => 'textfield',  
+   '#title' => t("Original email subject"), 
+   '#description' => t("The subject of the confirmation email sent to the petitioner in "). $languages[$translation_source->language]->name, 
+   '#value' => $translation_source->tsubjects[$translation_source->language], 
+   '#weight' => 1,
+   '#disabled'=> TRUE
+  );
+ 
+  $form['translated_emails'] ['email_subject']= array(
+   '#type' => 'textfield', 
+   '#title' => t("Translation of the email subject"), 
+   '#description' => t("Translation of the subject of the email sent to the petitioner."). getdefault("description_confirmation_mail"), 
+   '#default_value' => $defaultsubject, 
+   '#weight' => 2			
+  );
+  If (isset($node->tbodies[$node->language])) {
+    $defaultbody = $node->tbodies[$node->language];
+  }
+  else{
+   $defaultbody = getdefault("confirmation_email_body");
+   $defaultbody = t($defaultbody, array(), $node->language);
+  }
+  
+   $form['translated_emails'] ['original_email_body']= array(
+   '#type' => 'textarea', 
+   '#title' => t("Original email body"), 
+   '#description' => t("The body of the confirmation email sent to the petitioner in "). $languages[$translation_source->language]->name, 
+   '#value' => $translation_source->tbodies[$translation_source->language], 
+   '#weight' => 3,
+   '#disabled'=> TRUE
+  );
+ 
+  	
+  $form['translated_emails'] ['email_body']= array(
+    '#type' => 'textarea', 
+    '#title' => t("Translation of the email body"), 
+    '#description' => t("Translation of the body of the email sent to the petitioner."). getdefault("description_confirmation_mail"),
+    '#default_value' => $defaultbody, 
+    '#weight' => 4			
+  );
+  
+  $form['tnid']= array(
+    '#type' => 'hidden', 
+    '#value' => $translation_source->tnid == 0 ? $translation_source->nid : $translation_source->tnid, 
+    '#weight' => 4			
+   );
+
+ }
+
+ 
+  // The petition from should appear if this is not a translation
+ if ((!is_numeric($node->tnid) OR $node->tnid == 0 OR $node->nid == $node->tnid) AND !isset($_GET['translation'])) {
+     
+     petition_load($node);
+	
+     $form['petition'] = array(
+     '#type' => 'fieldset', 
+     '#title' => t('Petition settings'), 
+     '#collapsible' => TRUE, 
+     '#collapsed' => FALSE, 
+     '#weight' => -2			
+    );
+     
+ // Geographic part, if enabled.
+ if (module_exists("ip2cc") AND module_exists("countries_api") AND ((variable_get('petition_country_check', 1) == 1) OR (variable_get('petition_country_restriction', 1) == 1))) {
+   $form['petition']['petition_node_geography'] = array(
+     '#type' => 'fieldset', 
+     '#title' => t('Geographic settings for this petition'), 
+     '#collapsible' => TRUE, 
+     '#collapsed' => TRUE, 
+     '#weight' => -4			
+    );
+   if (variable_get('petition_country_check', 1) == 1) {
+     $default_country_check = is_numeric($node->country_check) ? $node->country_check : 0;
+     $form['petition']['petition_node_geography'] ['country_check']= array(
+       '#title' => t('Country check'), 
+       '#description' => t("If enabled, this will allow users to create petitions checking a petitioner's IP address  corresponds to the country he/she entered in his/her signature. This is a way of reducing fraud."), 
+       '#type' => 'checkbox', 
+       '#return_value' => 1, 
+       '#default_value' => $default_country_check, 
+       '#weight' => -1
+      );
+    }
+  
+    if (variable_get('petition_country_restriction', 1) == 1) {
+      $result = db_query('SELECT * FROM {countries_api_countries}');
+
+      $default_country_restrict_enabled = is_numeric($node->country_restriction_enabled) ? $node->country_restriction_enabled : 0;
+      $form['petition']['petition_node_geography'] ['country_restriction_enabled']= array(
+        '#title' => t('Geographic restriction'), 
+        '#description' => t("If checked, you will be abe to restrict the geographic area where this petition can be signed"), 
+        '#type' => 'checkbox', 
+        '#return_value' => 1, 
+        '#default_value' => $default_country_restrict_enabled, 
+        '#weight' => 0, 
+      );
+	
+      $form['petition']['petition_node_geography'] ['georestriction']=array(
+       '#type' => 'fieldset', 
+       '#title' => t('List of allowed countries if any'), 
+       '#collapsible' => TRUE, 
+       '#collapsed' => TRUE, 
+       '#weight' => 1	
+      );
+
+      $options = array();
+      while ($row = db_fetch_object($result)) {
+          $options[$row->iso2]=$row->name;
+      }
+  
+      if (is_array($node->list_allowed_countries) AND !empty($node->list_allowed_countries)) {
+         $default_allowed_countries=$node->list_allowed_countries;
+      }
+      else {
+        $default_allowed_countries=array('EU', 'FR', 'SE', 'FI', 'ES', 'PT', 'DK', 'EE', 'LV', 'LT', 'PL', 'CZ', 'HU', 'IT', 'SI', 'SK', 'DE', 'GB', 'IE', 'BE', 'NL', 'LU', 'AT', 'EL', 'RO' , 'BG' , 'CY', 'MT');
+      }
+      $form['petition']['petition_node_geography'] ['georestriction']['list_allowed_countries']= array(
+        '#title' => t('Geographic location'), 
+        '#description' => t("Choose in which countries this petition can be signed."), 
+        '#type' => 'select', 
+        '#options' => $options, 
+        '#default_value' => $default_allowed_countries, 
+        '#weight' => 1,
+	'#multiple' => TRUE,
+	'#size' => 6,
+     );
+   }
+ }
+	
+   // Petition settings : email of the petition maintainer as well as email frequency
+   $form['petition']['petition_node_settings'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Advanced petition settings'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => TRUE, 
+    '#weight' => -3			
+  );
+ 
+  $maintainer_email = isset($node->maintainer_email) ? $node->maintainer_email : NULL;
+  $form['petition']['petition_node_settings'] ['maintainer_email']= array(
+    '#type' => 'textfield', 
+    '#title' => t("Author's email"), 
+    '#description' => t("Enter the email where you wish to receive regular updates concerning the amount of signatures on your petition. If no email address is entered, the emails will be sent to your account's email"), 
+    '#default_value' => $maintainer_email, 
+    '#weight' => 1			
+  );
+	
+  $form['petition']['petition_node_settings'] ['update_frequency']= array(
+    '#type' => 'textfield', 
+    '#title' => t("Email alert frequency"), 
+    '#description' => t("Enter the frequency with wich you wish to receive email alerts"), 
+    '#default_value' => $node->update_frequency, 
+    '#weight' => 2			
+  );
+		
+  if (isset($node->email_subject)) {
+   $defaultsubject = $node->email_subject;
+  }
+  else {
+   $defaultsubject = getdefault("confirmation_email_subject");
+  }
+ 
+  $form['petition']['petition_node_settings'] ['email_subject']= array(
+   '#type' => 'textfield', 
+   '#title' => t("Customized subject of the mail sent to the petitioner"), 
+   '#description' => t("Customized email subject to the petitioner."). getdefault("description_confirmation_mail"), 
+   '#default_value' => $defaultsubject, 
+   '#weight' => 3			
+  );
+  If (isset($node->email_body)) {
+    $defaultbody = $node->email_body;
+  }
+  else{
+   $defaultbody = getdefault("confirmation_email_body");
+  }
+	
+  $form['petition']['petition_node_settings'] ['email_body']= array(
+    '#type' => 'textarea', 
+    '#title' => t("Customized body of the email sent to the signer"), 
+    '#description' => t("Customized email body to the petitioner."). getdefault("description_confirmation_mail"),
+    '#default_value' => $defaultbody, 
+    '#weight' => 4			
+  );
+  $optionfields=variable_get('petition_signature_fields_form', array('name', 'firstname', 'title', 'address','zip', 'town', 'country', 'canbe_informed'));
+  $options_signaturefields=array();
+  foreach ($optionfields as $field) {
+    if ($field!='0') { 
+      $options_signaturefields[$field]=$field;
+    }
+  }
+  if (is_array($node->optional_fields) and !empty($node->optional_fields)) {
+    $defaultoptionalfields=$node->optional_fields;
+   }
+   else {
+   $defaultoptionalfields=variable_get('petition_signature_fields_form', array('name', 'firstname', 'title', 'address', 'zip', 'town', 'country', 'canbe_informed'));
+  }	
+  $form['petition']['petition_node_settings'] ['optional_fields']= array(
+   '#type' => 'checkboxes', 
+   '#title' => t("Signature fields"), 
+   '#description' => 'Choose what fields to be included in the petition .', 
+   '#options' => $options_signaturefields, 
+   '#default_value' => $defaultoptionalfields, 
+   '#weight' => 5			
+  );
+ 
+ if (is_array($node->required_fields) and !empty($node->required_fields)) {
+ $defaultrequiredfields = $node->required_fields;
+ }
+ else {
+  $defaultrequiredfields = variable_get('petition_signature_fields_form', array('name', 'firstname', 'zip', 'town', 'country'));
+ }
+ $form['petition']['petition_node_settings'] ['required_fields']= array(
+ '#type' => 'checkboxes', 
+ '#title' => t("Signature required fields"), 
+ '#description' => 'Choose what fields to be required in the petition .', 
+ '#options' => $options_signaturefields, 
+ '#default_value' => $defaultrequiredfields, 
+ '#weight' => 6			
+ );
+	
+ $optiondisplay=variable_get('petition_report_fields_fields', array('name', 'firstname', 'zip', 'town', 'country'));
+ $options_displayfields = array();
+ foreach ($optiondisplay as $field) {
+ If ($field!='0') {
+  $options_displayfields[$field]=$field;
+  }
+ }
+ If (is_array($node->display_fields) and !empty($node->display_fields)) {
+ $defaultdisplayfields = $node->display_fields;
+ }
+ else {
+  $defaultdisplayfields = variable_get('petition_report_fields_fields', array('name', 'firstname', 'title', 'zip', 'town', 'country'));
+ }	
+ $form['petition']['petition_node_settings'] ['display_fields']= array(
+ '#type' => 'checkboxes', 
+ '#title' => t("Fields displayed in the signature overview"), 
+ '#description' => 'Choose what fields you want to display on the signature result page .', 
+ '#options' => $options_displayfields, 
+ '#default_value' => $defaultdisplayfields, 
+ '#weight' => 7		
+ );
+ 
+ $optiondisplay = array();
+ $displayhook = module_invoke_all('signaturedisplay_info');
+ foreach ($displayhook as $key=> $item) {
+    $optiondisplay [$key] = $item['name'];
+    if($key == '1default' | $item['default']) {
+       $display_mode = $key;
+    }
+ }
+
+ $display_mode = isset($node->display_mode) ? $node->display_mode : $display_mode;
+ $form['petition']['petition_node_settings']['display_mode'] = array(
+ '#type' => 'select', 
+ '#title' => t('Display mode'), 
+ '#options' => $optiondisplay,
+ '#default_value' => $display_mode,
+ '#weight' => 8
+ );
+ 
+ $form['petition']['activation_settings'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Activate / inactivate the signature form'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => TRUE, 
+    '#weight' => -2			
+  );
+ 
+ $activation = isset($node->activation) ? $node->activation : 1;
+ $form['petition']['activation_settings'] ['activation']= array(
+     '#type' => 'checkbox', 
+     '#title' => t('Activate the signature form'), 
+     '#default_value' => $activation,
+     '#description' => t('Uncheck this box if you want to inactivate the signature form to stop people from signing this petition'),
+     '#weight' => 1			
+  );
+ 
+  If (isset($node->inactivation_message)) {
+    $inactivation_message= $node->inactivation_message;
+  }
+  else{
+   $inactivation_message = "The period for signing this petition is now over.";
+  }
+	
+  $form['petition']['activation_settings'] ['inactivation_message']= array(
+    '#type' => 'textarea', 
+    '#title' => t("Inactivation message"), 
+    '#description' => t("Customized message to be displayed instead of the signature form to inform that the petition can no longer be signed. You can decide to empty it"), 
+    '#default_value' => $inactivation_message, 
+    '#weight' => 4			
+  );
+  
+  $form['petition']['campaign_settings'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Campaign settings'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => TRUE, 
+    '#weight' => -1			
+  );
+  
+  $form['petition']['campaign_settings'] ['limit_date']= array(
+   '#type' => 'textfield', 
+   '#title' => t("Limit Date"), 
+   '#description' => t('Format: %time. Enter the date until the petition campaign should be running.', array('%time' => !empty($node->date) ? $node->date : format_date(time(), 'custom', 'Y-m-d H:i:s O'))),
+   '#default_value' => $node->limit_date == 0 ? '' : format_date($node->limit_date, 'custom', 'Y-m-d H:i:s O'), 
+   '#weight' => 1			
+  );
+  
+   $form['petition']['campaign_settings'] ['signature_goal']= array(
+   '#type' => 'textfield', 
+   '#title' => t("signature goal"), 
+   '#description' => t('Enter the aimed amount of signatures to reach for this petition campaign'),
+   '#default_value' => $node->signature_goal, 
+   '#weight' => 2			
+  );
+   
+   $form['petition']['campaign_settings']['campaign_settings']= array(
+   '#type' => 'radios',
+   '#options' => array(t('none'),t('time based'), t('goal based')),
+   '#title' => t("campaign settings"), 
+   '#description' => t('Tell on which criteria the campaign should be set (time based vs goal based) - choose none if you want to have a petition running for ever. If you choose a campign mode, you will be informed per email when the campaign is over.'),
+   '#default_value' => $node->campaign_settings, 
+   '#weight' => 3			
+  );
+   $form['petition']['campaign_settings'] ['auto_inactivation']= array(
+     '#type' => 'checkbox', 
+     '#title' => t('Automatically inactivate the signature form'), 
+     '#default_value' => $node->auto_inactivation,
+     '#description' => t('Check this box if you want the petition form to be automatically inactivated when the campaign is over. Enter the message you want to display instead of the form then in the above section'),
+     '#weight' => 4			
+  );
+   
+  
+  
+ 
+ $form['petition']['manually_collected_signatures'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('manually collected signatures'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => TRUE, 
+    '#weight' => 0,			
+  );
+ 
+  $form['petition']['manually_collected_signatures'] ['manual_signatures']= array(
+    '#type' => 'textarea', 
+    '#title' => t("Manually Collected Signatures"), 
+    '#description' => t("<p>You can enter manually collected signatures to have them display with the electronically collected signatures. </p><p>Enter one signature per line with the following structure: </p>
+                        <p>'name'; 'firstname'; 'self-description'; 'address'; 'zip-code'; 'town'; 'country_code2'; 'phone'; 'email address'; 'canbe_informed'; 'language' </p>
+                        <p>example: </p>
+                        <p>Van den Brugh; Peter; ; Parisstraat 23; 5676; Antwerpen; NL; ; Peter456@hotmail.be; 0; nl </p>
+                        <p>Please note each field is separated with a semi-colon ';'. There is no semi colon afte ther last field of the line i.e the language! 
+                        Leave a blank between semi-colons if the field is empty.</p>
+                        "), 
+    '#default_value' => $node->manual_signatures, 
+    '#weight' => 4			
+  );
+  
+  }
+  // End of petition specific setting
+ 
+ 
+ $type = node_get_types('type', $node);
+
+  if ($type->has_title) {
+    $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => check_plain($type->title_label),
+      '#required' => TRUE,
+      '#default_value' => $node->title,
+      '#maxlength' => 255,
+      '#weight' => -5,
+    );
+  }
+
+  if ($type->has_body) {
+    $form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+  }
+ 
+ return $form;
+}
+
+/**
+* implementation of hook_load().
+*/
+
+function petition_load(&$node) {
+  If ($node->type == 'petition' && is_numeric($node->nid) && $node->nid>0) {
+    //if the petition is a translation, load the information from the original version instead.
+    //petition settings can only be edited on the original petition node.
+    if (is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+        $nid = $node->tnid;
+     }  else {
+        $nid = $node->nid;
+     }
+    
+ 
+    
+    $petition = db_fetch_array(db_query("SELECT * FROM {petition} WHERE nid=%d",$nid));
+    $node->country_check = $petition['pccheck'];
+    $node->country_restriction_enabled = $petition['pcrest'];
+    $node->list_allowed_countries = unserialize($petition['pcountry']);
+    $node->maintainer_email = $petition['pemail'];
+    $node->update_frequency = $petition['pfreq'];
+    $node->optional_fields =  unserialize($petition['poptfields']);
+    $node->required_fields =  unserialize($petition['reqfields']);
+    $node->email_subject = $petition['emailsubject'];
+    $node->email_body = $petition['emailbody'];
+    $node->display_fields = unserialize($petition['presfields']);
+    $node->display_mode = $petition['display_mode'];
+    $node->signatures = $petition['signatures'];
+    $node->activation = $petition['activation'];
+    $node->inactivation_message = $petition['inactivation_message'];
+    
+    $node->limit_date = $petition['limit_date'];
+    $node->signature_goal = $petition['signature_goal']; 
+    $node->campaign_settings = $petition['campaign_settings'];
+    $node->auto_inactivation = $petition['auto_inactivation'];
+
+     //Loading the translated version of the emails    
+    $node->tsubjects = array();
+    $node->tbodies = array();
+    $tnid = $node->tnid == 0 ? $node->nid : $node->tnid;
+    $result = db_query("SELECT * FROM {petition_translation} WHERE tnid=%d", $tnid);
+    while ($translations = db_fetch_object($result)) {
+      $node->tsubjects[$translations->language] = $translations->tsubject;
+      $node->tbodies[$translations->language] = $translations->tbody;
+    }
+    
+    
+    //small checking function, to convert the old display mode settings to the new one
+    if (is_numeric($node->display_mode)) {
+     $convertarray = array('0none', '1default');
+     $node->display_mode = $convertarray[$node->display_mode];
+    }
+    if (is_null($node->display_mode)) {
+     $node->display_mode = '1default';
+    }
+  }
+}
+
+
+
+/**
+* implementation of hook_insert().
+*/
+
+function petition_insert($node) {
+ 
+ if ($node->type != 'petition') {
+  return ;
+ }
+ 
+ 
+ $language = db_result(db_query("SELECT language FROM {node} WHERE nid = %d", $node->nid));
+ $tnid = db_result(db_query("SELECT tnid FROM {node} WHERE nid = %d", $node->nid));
+ $tnid = $tnid == 0 ? $node->nid : $tnid;
+ //if language set, save the mail settings in the petitiontranslation table
+ if(!empty($language) AND $tnid > 0) {
+     db_query("INSERT INTO {petition_translation} (nid, tnid, language, tsubject, tbody) VALUES (%d, %d, '%s', '%s', '%s')", $node->nid, $tnid, $language, $node->email_subject, $node->email_body);
+ }
+ 
+ // if the original version of the petition, save the other settings
+ if(!is_numeric($node->tnid) OR $node->tnid==0 OR $node->nid==$node->tnid) {
+  
+  $node->signatures = db_result(db_query("SELECT COUNT(cid) FROM {petition_signatures} WHERE nid = %d AND confirmed = 1", $node->nid));
+  if (!empty($node->limit_date) && strtotime($node->limit_date) > 0) {
+   $node->limit_date = strtotime($node->limit_date);
+  }
+   db_query("INSERT INTO {petition} (nid, pccheck, pcrest, pcountry, pemail, pfreq, poptfields, reqfields, emailsubject, emailbody,
+                                     presfields, display_mode, activation, inactivation_message, signatures, limit_date, signature_goal, campaign_settings, auto_inactivation)
+                            VALUES (%d, %d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', %d, %d, %d, %d, %d)", 
+                            $node->nid, $node->country_check, $node->country_restriction_enabled, serialize($node->list_allowed_countries), 
+                            $node->maintainer_email, $node->update_frequency, serialize($node->optional_fields), 
+                            serialize($node->required_fields), $node->email_subject, $node->email_body, serialize($node->display_fields), $node->display_mode, $node->activation, $node->inactivation_message, $node->signatures,
+                            $node->limit_date, $node->signature_goal, $node->campaign_settings, $node->auto_inactivation);
+  if($node->manual_signatures != '') {
+   $signatures = explode("\n", $node->manual_signatures);
+   $fields = array('name', 'firstname', 'title', 'address', 'zip', 'town', 'country', 'tel', 'email', 'canbe_informed', 'language');
+   
+   if (is_Array($signatures)) {
+    foreach ($signatures as $signature_string) {
+      $signature_string = str_replace("; ",";",check_plain($signature_string));
+      $signature_fields = explode(";", $signature_string);
+      $i = 0;
+      $signature = array();
+      //prepare the signature
+     if(count($fields) != count($signature_fields)) {
+       drupal_set_message(t("Manual signature !signature_string could not be saved. check the structure.", array('!signature_string'=>$signature_string)));
+      
+     } else {
+        foreach($signature_fields as $signature_field) {
+          $signature[$fields[$i]] = $signature_field;
+          $i++;
+        }
+          // Enter the signature in the table
+          //Get the cid
+         $signature['cid'] = db_result(db_query('SELECT MAX(cid) FROM {petition_signatures}')) + 1;
+         //Get the position of the new signature in the petition and insert it
+         $position = db_result(db_query("SELECT MAX(position) FROM {petition_signatures} WHERE nid = %d", $node->nid));
+         $position += 1;
+ 
+         //Give a hash as manual
+         $signature['hash'] = 'manual';
+         $signature['confirmed'] = 1;
+         $signature['remote_address'] = 'manual';
+         $signature['date'] = time();
+         $signature['position'] = $position;
+	
+       // INSERT DATA IN THE PETITION SIGNATURE TABLE, with an "OK STATEMENT" in the confirmed column
+      db_query("INSERT INTO {petition_signatures} ( cid, nid, name, firstname, title, address, zip, town, country, tel, email, canbe_informed, language, remote_address, date, confirmed, hash, position)
+      VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s','%s', %d, %d, '%s', %d)",
+      $signature['cid'], $node->nid, $signature['name'], $signature['firstname'], $signature['title'], $signature['address'], $signature['zip'], $signature['town'], $signature['country'], 
+      $signature['tel'], $signature['email'], $signature['canbe_informed'], $signature['language'], $signature['remote_address'], $signature['date'], $signature['confirmed'], $signature['hash'], $signature['position']);
+     drupal_set_message(t("Manual signature for !signature_name successfully entered in position !signature_position", array('!signature_name' => $signature['name'], '!signature_position' => $signature['position'])));
+
+     }
+   }
+   $signature_count = db_result(db_query("SELECT COUNT(cid) FROM {petition_signatures} WHERE nid = %d AND confirmed = 1", $node->nid));
+   db_query("UPDATE {petition} SET signatures = %d WHERE nid = %d" , $signature_count, $node->nid);
+   drupal_set_message(t("There now are !signature_count for this petition", array('!signature_count'=> $signature_count)));
+  }
+  }
+ }
+}
+
+/**
+* implementation of hook_delete().
+*/
+
+function petition_delete($node) {
+//Delete all the signatures related to the petition
+ petition_delete_but_not_signatures($node);
+ db_query("DELETE FROM {petition_signatures} WHERE nid = %d", $node->nid);
+ //if this is the original version, delete all the translations
+ if (is_numeric($node->tnid) AND $node->tnid = $node->nid) {
+   $result = db_query("SELECT * FROM {node} WHERE tnid = %d", $node->nid);
+   while($translation = db_fetch_object($result)) {
+     node_delete($translation->nid);
+   }
+ }
+
+}
+
+function petition_delete_but_not_signatures($node) {
+ //Deletes all but not the signature: used for updates.
+ db_query("DELETE FROM {petition} WHERE nid = %d", $node->nid);
+  db_query("DELETE FROM {petition_translation} WHERE nid = %d", $node->nid);
+}
+
+/**
+* implementation of hook_update().
+*/
+function petition_update($node, $log = TRUE) {
+ petition_delete_but_not_signatures($node);
+ petition_insert($node, FALSE);
+ if ($log) {
+ watchdog('petition', 'Petition !node->title updated',array('!node->title' => $node->title), WATCHDOG_NOTICE);
+ }
+}
+
+/**
+* implementation of hook_validate().
+*/
+
+function petition_validate($node) {
+   
+ // checks the frequency is a number.
+ if (isset($node->update_frequency) AND $node->update_frequency!='' AND !is_numeric($node->update_frequency)) {
+ form_set_error('petition', t('The update frequency must be a number'));
+ }
+
+ If (!empty($node->maintainer_email) AND !valid_email_address($node->maintainer_email)) {
+ form_set_error('petition', t('Please, use a valid email . ') . t(' your current mail  is: ') . check_plain($node->maintainer_email));
+ }
+ //check the email body contains the @link
+ If (isset($node->email_body) AND (strpos($node->email_body, '@link')===FALSE)) {
+ form_set_error('petition', t('Please, do not forget to place the @link in your email body'));
+ }
+ 
+  // checks the signature goal is number.
+ if (isset($node->signature_goal) AND $node->signature_goal!='' AND !is_numeric($node->signature_goal)) {
+ form_set_error('petition', t('The signature goal must be a number - campaign settings'));
+ }
+ 
+  // checks the limit date is a date
+  if (!empty($node->limit_date) && strtotime($node->limit_date) <= 0) {
+      form_set_error('petition', t('You have to specify a valid limit date - campaign settings'));
+    }
+  
+}
+
+/**
+* implementation of petition_link().
+*/
+function petition_link($type, $object, $teaser = FALSE) {
+  $links = array();
+  if(($type == 'node') AND $object->type == 'petition') {
+   $links['signature_counts'] = array(
+        'title' => format_plural($object->signatures, '1 signature', '@count signatures'),
+         'href' => "node/$object->nid/signatures"
+      );
+  }
+
+  return $links;
+}
+
+
+/**
+* implementation of hook_view().
+*/
+function petition_view(&$node, $teaser = 0, $page = 0) {
+  
+  // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SAME FORM TO APPLY FOR ALL THE TRANSLATIONS
+  if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+  
+  
+ //If a teaser, do not display the form
+  if ($teaser) {
+    if($node->teaser == '') {
+      $teaser_text = node_teaser($node->body);
+    }
+    else {
+      $teaser_text = node_teaser($node->teaser);       
+    }
+    $node->content['teaser'] = array('#value' => check_markup($teaser_text, $node->format, FALSE));
+    return $node;		
+  }
+	
+  //DEFINE THE GLOBAL $_petition_form_list THAT WILL BE CALLED BY HOOK PETITION_FORMS
+  global $_petition_form_list;
+  $_petition_form_list[] = $nid;
+  
+  $output = $node->activation ? drupal_get_form('petition_signature_form_'. $nid, $node) : check_markup($node->inactivation_message, $node->format, FALSE);
+ 
+  //remove he surrounding <fom> tag if this is a preview
+  If ($preview) {
+    $output = preg_replace('/<\/?form[^>]*/', '', $output);
+  }
+  $node->content['body'] = array('#value' => check_markup($node->body, $node->format, FALSE));
+  if (user_access('sign petitions')) {
+    $node->content['petition'] = array('#value' => $output, '#weight' => 1);
+  }
+  else {
+    $node->content['petition'] = array('#value' => t('You are not allowed to sign this petition'), '#weight' => 1);
+ }
+  $node->bodytext = $node->content['body']['#value'];
+  return $node;
+}
+
+/**
+ *Implementatio of Hook $module_preprocess_$hook
+ */
+function petition_preprocess_node(&$variables) {
+  $node = $variables['node'];
+  if($node->type == 'petition') {
+  // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SAME FORM TO APPLY FOR ALL THE TRANSLATIONS
+   if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+ }
+  
+ // incase a themer wants to create a node-petition.tpl.php file and separate between the petition body and form.
+ // The themer should use $petition_body and $petition_form instead of $content
+ // The themer can user $signature_count to refer to the amount of the gathered sigantures
+ if($node->type == 'petition' && !$variables['teaser'] && isset($node->bodytext)) {  
+    $variables['petition_body'] = $node->bodytext;     
+    if (user_access('sign petitions')) {
+    $variables['petition_form'] = drupal_get_form('petition_signature_form_'. $nid, $node);
+    }
+    else {
+    $variables['petition_form'] = t('You are not allowed to sign this petition');
+   }
+ }
+ 
+ if($node->type == 'petition') {
+   $variables['signature_count'] = $node->signatures;
+   $variables['activation'] = $node->activation;
+   $variables['inactivation_message'] = filter_xss($node->inactivation_message);
+   $variables['limit_date'] = $node->limit_date;
+   $variables['signature_goal'] = $node->signature_goal; 
+   $variables['campaign_settings'] = $node->campaign_settings;
+ }
+ 
+}
+
+/**
+* implementation of hook_block().
+*/
+function petition_block($op = 'list', $delta = 0, $edit = array()) {
+ 
+// ADD THE SIGNATURE FORM TO A BLOCK VISIBLE ON PAGES WITH A PETITION NODE
+ switch ($op) {
+ case 'list':
+ $blocks[0]['info'] = t('Petition module - Signature Form');
+ return $blocks;
+
+ case 'view':  
+ If ((arg(0) == 'node') AND is_numeric(arg(1))) {
+  $node = node_load(arg(1));
+  
+  // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SAME FORM TO APPLY FOR ALL THE TRANSLATIONS
+   if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+  
+  If (($node->type == 'petition') AND ($node->activation == '1') AND (arg(2) != 'edit') AND (arg(2) != 'result')) {
+  global $_petition_form_list;
+  $_petition_form_list[] = $nid;
+  $output = drupal_get_form('petition_signature_form_'. $nid, $node);
+  $block=array();
+  $block['subject'] = t('Sign the petition!');
+  $block['content'] = $output;			
+  }			
+ }
+ return $block;
+ }
+  
+}
+
+
+/**
+ * Implementation of hook_theme()
+ */
+function petition_theme() {
+  return array(
+     'default_signature_display' =>array(
+      'arguments' => array('node' => NULL),
+      ),
+     'petition_admin_signatures' =>array(
+      'arguments' => array('form' => NULL),
+      ),
+  );
+}
+
+/*
+* Calls the chose dispaly mode
+*/
+function petition_signature_page($node) {
+  $display_modes = module_invoke_all('signaturedisplay_info');
+  
+  return call_user_func_array($display_modes[$node->display_mode]['callback'], array($node));
+  
+}
+
+function default_signature_display($node) {
+  return theme('default_signature_display', $node);
+}
+
+
+/**
+* theme_default_signature_display.
+* @param $node, 
+* the node object of the petition of which we wish to display the signatures
+* @return
+* a theme('pager', $output) where $output is a pager query of the signatures
+*/
+
+function theme_default_signature_display($node) {
+ $max=variable_get('petition_signature_number', 50);
+ 
+ // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SIGNATURES TO APPEAR UNDER ALL THE TRANSLATIONS
+   if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+  
+ $title = t('Signatures for the petition : ') . check_plain($node->title);
+ drupal_set_title($title);
+ 
+ $fields = $node->display_fields;
+ $field_array = array('position' => t(' '), 'name' => t('Surname'), 'firstname' => t('First name'), 'title' => t('Other (activity, status etc)'), 'address' => t('Address'), 'zip' => t('ZIP code'), 'town' => t('Town'), 'country' => t('Country'), 'tel' => t('Phone number'), 'email' => t('Email'), 'canbe_informed' => t('Accept to be informed of the campaign'), 'language' => t('language'));
+ 
+ $header = array();
+ $i=0;
+ foreach ($fields as $field) {
+  if(!empty($field)){
+   $header[$i] = $i <1 ? array('data' =>  $field_array[$field], 'field' => $field, 'sort' => 'asc') : array('data' =>  $field_array[$field], 'field' => $field);
+   $i++;
+   if ($field == 'country') {
+    $header[$i] = '';
+    $i++;
+   }
+  }
+ }
+ 
+ $sql = "SELECT * FROM {petition_signatures} WHERE nid = %d AND confirmed = 1";
+ $tablesort = tablesort_sql($header);
+ 
+ $result = pager_query($sql . tablesort_sql($header), $max, 0, NULL, $nid);
+ 
+ while ($signature = db_fetch_object($result)) {
+  $data_array = array();
+  $i=0;
+  
+  foreach($fields as $field) {
+    if (!empty($field)) {
+      if ($field == 'country') {
+        if (module_exists("countryicons") AND module_exists("countries_api")) {
+          $url = countryicons_get_icon_path(strtolower($signature->$field));
+          $src = url($url, array('language'=>$url));
+          $country = db_result(db_query("SELECT name from {countries_api_countries} where iso2 = '%s'", $signature->$field));
+          $attribs = array('width' => 14, 'height' => 14, 'alt' => "$cc", 'title' => "$country");
+          $flag = '<img src="'. check_url($url)  .'" '. drupal_attributes($attribs) .' />';
+        }
+        else {
+         $country = $signature->country; $flag='';
+        }
+        $data_array[$i] = $country;
+        $i++;
+        $data_array[$i] = $flag;
+        $i++;
+       }
+    else {
+      $data_array[$i] = check_plain($signature->$field);
+      $i++;
+    }
+   }
+  }
+  $rows[] = array('data' => $data_array);   
+  
+ }
+ 
+ 
+  If (count($rows)==0) {
+ return t('There are no signatures for this petition');
+ }
+ else {
+  $output = theme('table', $header, $rows);
+  $output .= theme('pager', NULL, $max, 0);
+  return $output;
+ }		
+}
+
+/**
+* petition_result_page.
+* @param $node, 
+* the node object of the petition of which we wish to display the signatures
+* @return
+* Download the result as a CSV (Comma Separated Value) file of the results of the petition.
+*/
+
+function petition_result_page($node) {
+ // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SIGNATURES TO APPEAR UNDER ALL THE TRANSLATIONS
+ // THOUGH IN PRACTICE, ONLY THE MAINTAINER OF THE ORIGINAL SHOULD BE ABLE TO EXPORT THE DATA
+  if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+  
+ $file_name = tempnam(variable_get('file_directory_temp', FILE_DIRECTORY_TEMP), 'webform');
+ $handle = @fopen($file_name, 'w'); // The @ suppresses errors.
+	
+ $fields = variable_get('petition_report_fields_fields', array('name', 'firstname', 'title', 'zip', 'town', 'country'));
+ $header = '"';
+ foreach ($fields as $field) {
+ $header .= '", "'. $field; 
+ }
+ // Write header information.
+ @fwrite($handle, $header .'"'."\n");
+ $signature_fields = implode(', ', $fields);
+ $result = db_query("SELECT ". $signature_fields ." FROM {petition_signatures} WHERE nid = %d AND confirmed = 1", $nid);
+ while ($line = db_fetch_array($result)) {
+ $row = '"';
+ foreach ($line as $cell) {
+  $row .= '", "'. check_plain($cell);
+ }
+ // Write data from submissions.
+ @fwrite($handle, $row .'"'."\n");
+ }
+
+ // Close the file.
+ @fclose($handle);
+
+ drupal_set_header("Content-type: text/csv; charset=utf-8");
+ drupal_set_header("Content-Disposition: attachment; filename=". preg_replace('/\.$/', '', str_replace(' ', '_', check_plain($node->title))) .".csv");
+	
+ @readfile($file_name); // The @ makes it silent.
+ @unlink($file_name); // Clean up, the @ makes it silent.
+ exit(0);
+}
+
+
+/**
+* implementation of hook_forms().
+* Enable to build a signature form for each petition.
+* uses the GLOBAL $_petition_form_list defined in hook_view.
+* Each form created is given an id corresponding to the nid of the petition it is related.
+* Each form uses the same form template: 'petition_signature_form';
+*/
+
+function petition_forms() {
+  global $_petition_form_list;
+  if (is_array($_petition_form_list)) {
+    foreach ($_petition_form_list as $form_id) {
+      $forms['petition_signature_form_'. $form_id]['callback'] = 'petition_signature_form';
+	}
+      }
+  return $forms;	
+}
+
+/**
+* petition_signature_form.
+* Signature form generation function. 
+* */
+
+function petition_signature_form($form_state, &$node) {
+ global $user;
+ // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SAME FORM TO APPEAR UNDER EACH TRANSLATION
+  if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+
+ $form['#submit'][] = 'petition_signature_form_submit';
+ $form['#validate'][] = 'petition_signature_form_validate';
+ 
+  //Determine required fields
+  $required = array('name' => FALSE, 'firstname' => FALSE, 'title' => FALSE, 'address' => FALSE, 'zip' => FALSE, 'town' => FALSE, 'country' => FALSE, 'tel' => FALSE );
+   foreach ($node->required_fields as $field) {
+   $required[$field] = TRUE;
+  }
+ 
+ $form['signature'] = array(
+ '#type' => 'fieldset', 
+ '#title' => t('Sign the petition!'), 
+ '#collapsible' => FALSE, 
+  );
+ 
+ If (in_array('name', $node->optional_fields, TRUE)) {
+  $form['signature']['name'] = array(
+  '#type' => 'textfield', 
+  '#title' => t('Surname'), 
+  '#maxlength' => 128, 
+  '#required' => $required['name'], 
+  '#weight' => 0		
+  );
+ }
+  
+ If (in_array('firstname', $node->optional_fields, TRUE)) {
+  $form['signature']['firstname'] = array(
+   '#type' => 'textfield', 
+   '#title' => t('First name'), 
+   '#maxlength' => 128, 
+   '#required' => $required['firstname'], 
+   '#weight' => 1		
+   );
+ }
+ 
+ If (in_array('title', $node->optional_fields, TRUE)) {
+  $form['signature']['title'] = array(
+   '#type' => 'textfield', 
+   '#title' => t('Other (activity, status etc)'), 
+   '#maxlength' => 256, 
+   '#required' => $required['title'], 
+   '#weight' => 2		
+   );
+  }
+ If (in_array('address', $node->optional_fields, TRUE)) {
+  $form['signature']['address'] = array(
+   '#type' => 'textfield', 
+   '#title' => t('address'), 
+   '#maxlength' => 300, 
+   '#required' => $required['address'], 
+   '#weight' => 3		
+   );
+  }
+ If (in_array('zip', $node->optional_fields, TRUE)) {
+  $form['signature']['zipcode'] = array(
+   '#type' => 'textfield', 
+   '#title' => t('ZIP Code'), 
+   '#maxlength' => 10, 
+   '#required' => $required['zip'], 
+   '#weight' => 4		
+   );
+  }
+ If (in_array('town', $node->optional_fields, TRUE)) {
+  $form['signature']['town'] = array(
+   '#type' => 'textfield', 
+   '#title' => t('Town'), 
+   '#maxlength' => 30, 
+   '#required' => $required['town'], 
+   '#weight' => 5		
+   );
+  }
+    
+ If (in_array('country', $node->optional_fields, TRUE)) {
+  if (module_exists("countries_api")) {
+    $result = db_query('SELECT * FROM {countries_api_countries}');
+    $options = array('' => t("Select your country"));
+    while ($row = db_fetch_object($result)) {
+     $options[$row->iso2]=$row->name;
+    }
+    $optons =asort($options);
+    $form['signature']['country'] = array(
+     '#type' => 'select', 
+     '#title' => t('Country'), 
+     '#options' => $options, 
+     '#required' => $required['country'], 
+     '#multiple' => FALSE, 
+     '#weight' => 6		
+     );  
+    }
+    else {
+     $form['signature']['country'] = array(
+      '#type' => 'textfield', 
+      '#title' => t('Country'), 
+      '#maxlength' => 20, 
+      '#required' => $required['country'], 
+      '#weight' => 6
+      );
+    }
+  }
+   
+  $form['signature']['email'] = array(
+    '#type' => 'textfield', 
+    '#title' => t('Email'), 
+    '#maxlength' => 50,
+    '#required' => TRUE,
+    '#weight' => 7
+    );
+	
+	
+ If (in_array('tel', $node->optional_fields, TRUE)) {
+  $form['signature']['phone'] = array(
+   '#type' => 'textfield', 
+   '#title' => t('Phone'), 
+   '#maxlength' => 17, 
+   '#required' => $required['tel'], 
+   '#weight' => 7
+   );
+ }
+ 
+ If (in_array('canbe_informed', $node->optional_fields, TRUE)) {
+  $form['signature']['canbe_informed'] = array(
+   '#type' => 'checkbox', 
+   '#title' => t('Be kept informed of the campaign'),
+   '#description' => t('Check this box if you wish to receive updates about this petition campaign'),
+   '#required' => $required['canbe_informed'], 
+   '#weight' => 8
+   );
+ }
+	
+ $form['signature']['remote_address'] = array(
+  '#type' => 'hidden', 
+  '#value' => $_SERVER['REMOTE_ADDR'], 
+  );
+ $form['signature']['date'] = array(
+  '#type' => 'hidden', 
+  '#value' => time(), 
+  );
+ 
+ $form['signature_details']['nid'] = array(
+  '#type' => 'hidden', 
+  '#value' => $nid, 
+  );
+ $form['signature_details']['language'] = array(
+  '#type' => 'hidden', 
+  '#value' => $node->language, 
+  );
+
+ $form['signature']['submitbutton'] = array(
+  '#type' => 'submit', 
+  '#value' => t('Sign it!'), 
+  '#weight' => 1000, 
+  );
+ 
+ return $form;
+}
+
+function petition_signature_form_validate($form, $form_state) {
+ // The $nid is the nid of the original petition in case of translation
+ $nid = $form_state['values']['nid'];
+ $remote_addr = $form_state['values']['remote_address'];
+ $country = $form_state['values']['country'];
+ $email = $form_state['values']['email'];
+ $language = $form_state['values']['language'];
+    
+ $node = node_load($nid);
+
+  //CHECK NO MORE THAN 5 unconfirmed signatures come from the same IP address 
+  $count_addr = db_result(db_query("SELECT COUNT(cid) FROM {petition_signatures} WHERE nid = %d AND remote_address = '%s' AND confirmed = 0", $nid, $remote_addr));
+  if ($count_addr > 5) {
+    form_set_error('signature', t('More than 5 signatures have been entered from your IP address and none of them have been confirmed. Please confirm the other signatures first'));
+    watchdog("petition", "Suspicion of spam attempt from IP address: !remote_addr", array('!remote_addr' => $remote_addr));
+  }
+
+ If ((($node->country_check == 1) OR ($node->country_restriction_enabled == 1)) AND module_exists("ip2cc") AND in_array('country', $node->required_fields)) {
+  $co = ip2cc_get_country($remote_addr);
+  If (isset($co)) {
+   $ip_country = $co->country_code2;
+   //IF ENABLED, CHECK ENTERED COUNTRY AGAINST IP 
+   If (($ip_country != $country) AND ($node->country_check == 1)) {
+    form_set_error('signature', t('The IP address from which you signed this petition does not correspond to the country where you are claiming to live in. Please, check. If the error persists, please contact the site administrator.'));
+    }		
+   // IF ENABLED, CHECK IP IS ENTERED FROM AN ALLOWED COUNTRY
+   elseif ($node->country_restriction_enabled == 1) {
+    $check = FALSE;
+    while ($check = FALSE) {
+     foreach ($node->list_allowed_countries as $country_code => $country_name) {
+      if ($country_code == $ip_country) {
+       $check = TRUE;
+       }
+     }
+    }
+    if ($check = FALSE) {
+     form_set_error('signature', t('The IP address from which you are signing this petition corresponds to a country where the petition does not apply. We unfortunately cannot accept your signature.'));
+     }
+    }
+  }	
+   else {
+    form_set_error('signature', t('The IP address from which you are signing this petition does not correspond to any known country. Please contact the site administrator .'));
+    }
+  }
+	
+ If (!valid_email_address($email)) {
+  form_set_error('signature', t('Please, use a valid email ') . t('. Your current address is:') . $email);
+  }
+	
+ $same_signature = db_query("SELECT cid FROM {petition_signatures} WHERE nid = %d AND email = '%s'", $nid, $email);
+ $same=array();
+ while (db_fetch_array($same_signature)) {
+  $same[]=$same_signature->cid;
+ }
+
+ If (count($same)>0) {
+  form_set_error('signature', t('Someone using the same email address has already signed the petition. You may not sign twice this petition'));
+  }
+
+}
+
+function petition_signature_form_submit($form, &$form_state) {
+
+ $signature->nid = $form_state['values']['nid'];
+ $signature->name = $form_state['values']['name'];
+ $signature->firstname = $form_state['values']['firstname'];
+ $signature->title = $form_state['values']['title'];
+ $signature->address = $form_state['values']['address'];
+ $signature->zip = $form_state['values']['zipcode'];
+ $signature->town = $form_state['values']['town'];
+ $signature->country = $form_state['values']['country'];
+ $signature->tel = $form_state['values']['phone'];
+ $signature->email = $form_state['values']['email'];
+ $signature->remote_address = $form_state['values']['remote_address'];
+ $signature->date = $form_state['values']['date'];
+ $signature->confirmed = 0;
+ $signature->language = $form_state['values']['language'];
+ $signature->canbe_informed = $form_state['values']['canbe_informed'];
+	
+ //check that no one with the same email address has already signed the petition.
+ $same_signature = db_query("SELECT cid FROM {petition_signatures} WHERE nid = %d AND email = '%s'", $signature->nid, $signature->email);
+ $same=array();
+ while (db_fetch_array($same_signature)) {
+  $same[]=$same_signature->cid;
+ }
+	
+ If (count($same) == 0) {
+  //Get the cid
+  $signature->cid = db_result(db_query('SELECT MAX(cid) FROM {petition_signatures}')) + 1;
+  //CREATE A HASH
+  $signature->hash = md5($signature->cid . $signature->email . $signature->cid . rand());
+	
+  // INSERT DATA IN THE PETITION SIGNATURE TABLE, with a "NOT OK STATEMENT" in the confirmed column
+  db_query("INSERT INTO {petition_signatures} ( cid, nid, name, firstname, title, address, zip, town, country, tel, email, canbe_informed, language, remote_address, date, confirmed, hash)
+   VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',  %d, '%s','%s', %d, %d, '%s')",
+   $signature->cid, $signature->nid, $signature->name, $signature->firstname, $signature->title, $signature->address, $signature->zip, $signature->town, $signature->country, 
+   $signature->tel, $signature->email, $signature->canbe_informed, $signature->language, $signature->remote_address, $signature->date, $signature->confirmed, $signature->hash);
+  
+  // IF the form was submitted from a translation, retrieve the nid of the translated version to send the email in the correct languge
+    if (empty($signature->language)) {
+      $nid = $signature->nid;
+    }
+    else {
+   $nid = db_result(db_query("SELECT nid FROM {petition_translation} WHERE tnid = %d AND language = '%s'",$signature->nid, $signature->language));
+   }
+  // SEND AN EMAiL WITH A LINK WHICH, WHEN CLICKED ON, WILL CALL 'petition_confirmation_page', AND REPLACE THE "NOT OK STATEMENT" with a "OK STATEMENT"
+  $node = node_load($nid);
+  $params['to'] = $signature->email;
+  $link = url('petition/signature/confirmation/'. $signature->nid .'/'. $signature->cid .'/'. $signature->date .'/'. $signature->hash, array('absolute' => TRUE));
+  $subject = empty($signature->language) ? $node->email_subject : $node->tsubjects[$signature->language];
+  $subject = t($subject, array('@petitiontitle' => $node->title, '@firstname' => $signature->firstname, '@name' => $signature->name, '@link' => $link, '@site' => variable_get('site_name', 'localhost')));
+  $params['subject'] = filter_xss($subject);
+  $body = empty($signature->language) ? $node->email_body : $node->tbodies[$signature->language];
+  $body = t($body, array('@petitiontitle' => $node->title, '@firstname' => $signature->firstname, '@name' => $signature->name, '@link' => $link, '@site' => variable_get('site_name', 'localhost')));
+  $params['body'] = filter_xss($body);
+  drupal_mail('petition', 'signature-confirm', $params['to'], language_default(), $params, variable_get('site_mail', NULL));
+  drupal_set_message(t("Thank you for signing the petition. An email has been sent to you. Please click on the enclosed link within 3 days in order to confirm your signature"));
+ }
+
+}
+
+
+/**
+* petition_confirmation_page.
+* function called when a "signer" click on the link included in the mail they receive.
+* @param $nid,
+* nid of the petition the signature is associated with.
+* @param $cid,
+* cid of the signature.
+* @param $date
+* unix timestamp when the signature was submitted
+* @param $hash
+* unique hash associated with the signature
+* @return
+* remove the not ok statement on the concerned signature.
+* Send a message to the petition maintainer if the signature is the nth one.
+*/
+
+function petition_confirmation_page($nid, $cid, $date, $hash) {
+  
+  
+  $node = node_load($nid);
+  If ($node->display_mode == '0none') {
+    $url ='node/'. $nid;
+  }
+  else {
+   $url ='node/'. $nid .'/signatures';
+   }
+ 
+ $author = user_load($node->uid);
+ //Check there is a signature to confirm
+ $result = db_result(db_query("SELECT COUNT(cid) FROM {petition_signatures} WHERE CONFIRMED =0 AND nid = %d AND cid = %d AND date = %d AND hash ='%s'", $nid, $cid, $date, $hash));
+ if($result == 0 ) {
+   drupal_goto($url);
+   return;
+ }
+ 
+ // confirm the signature.
+ db_query("UPDATE {petition_signatures} SET confirmed = 1 WHERE nid = %d AND cid = %d AND date = %d AND hash ='%s'", $nid, $cid, $date, $hash);
+ //counts the number of confirmed signature for the petition
+ $signature_count = db_result(db_query("SELECT COUNT(cid) FROM {petition_signatures} WHERE nid = %d AND confirmed = 1", $nid));
+ db_query("UPDATE {petition} SET signatures = %d WHERE nid = %d" , $signature_count, $nid);
+ 
+ //Get the position of the new signature in the petition and insert it
+ $position = db_result(db_query("SELECT MAX(position) FROM {petition_signatures} WHERE nid = %d", $nid));
+ $position += 1;
+ db_query("UPDATE {petition_signatures} SET position = %d WHERE nid = %d AND cid = %d AND date = %d AND hash ='%s'", $position, $nid, $cid, $date, $hash);
+ 
+
+ // if yes, send an email to inform the petition maintainer of the number of signatures	
+ If (is_numeric($node->update_frequency) AND ($node->update_frequency>0) AND ($signature_count % $node->update_frequency==0)) {
+  $author = user_load(array('uid' => $node->uid));
+  $maintainer = $author->name;
+  $params['to'] = !valid_email_address($node->maintainer_email) ? $author->mail : $node->maintainer_email;
+  $defaultsubject = getdefault("update_email_subject");
+  $subject = variable_get('petition_emailsubject_to_maintainer', $defaultsubject);
+  $subject = t($subject, array('@petitiontitle' => $node->title, '@number' => $signature_count, '@maintainer' => $maintainer, '@site' => variable_get('site_name', 'localhost')));
+  $params['subject'] = filter_xss($subject);
+  $defaultbody = getdefault("update_email_body");
+  $body = variable_get('petition_emailsubject_to_maintainer', $defaultbody);
+  $body = t($body, array('@petitiontitle' => $node->title, '@number' => $signature_count, '@maintainer' => $maintainer, '@site' => variable_get('site_name', 'localhost')));
+  $params['body'] = filter_xss($body);
+  drupal_mail('petition', 'frequency-update', $params['to'], language_default(), $params, variable_get('site_mail', NULL));
+  }	
+ //Redirect the signer to the page with all the signatures.
+ // Because the nid is the nid of the original version, we determine is the petitioner has a preferred language. If yes, we find the nid of the translated version
+ $language = db_result(db_query("SELECT language FROM {petition_signatures} WHERE nid = %d AND cid = %d AND date = %d AND hash ='%s'", $nid, $cid, $date, $hash));
+ if (!empty($language)) {
+   $nid = db_result(db_query("SELECT nid FROM {petition_translation} WHERE tnid = %d AND language = '%s'",$nid, $language));
+   }
+ // empty the cache before routing to the result page
+ cache_clear_all();
+ drupal_goto($url);
+ drupal_set_message(t("Your signature has been confirmed. Thank you for signing the petition.") . check_plain($node->title));
+}
+
+
+function petition_clear_signatures($node) {
+ $output = drupal_get_form('clear_signature_form', $node);
+ return $output;
+}
+function clear_signature_form($form_state, &$node) {
+ $form['#submit'][] = 'clear_signature_form_submit';
+ $form['#validate'][] = 'clear_signature_form_validate';
+ $form['clear_signature']['confirmation_clear'] = array(
+  '#type' => 'checkbox', 
+  '#title' => t('Confirmation'), 
+  '#return_value' => 1, 
+  '#default_value' => 0, 
+  '#description' => t("Please, confirm you want to delete all the signatures before clicking on submit"), 
+  '#weight' => 2	
+  );
+ $form['clear_signature']['nid'] = array(
+  '#type' => 'hidden', 
+  '#value' => $node->nid, 
+  );
+ $form['clear_signature']['submitbutton'] = array(
+  '#type' => 'submit', 
+  '#value' => t('Delete all the signatures!'), 
+  '#weight' => 1000,
+  );
+ return $form; 
+}
+
+function clear_signature_form_validate($form, &$form_state) {
+ $nid = $form_state['values']['nid'];
+ $confirm = $form_state['values']['confirmation_clear'];
+ If ($confirm!=1) {
+  form_set_error('clear_signature', t('Please, check the box to confirm you want to delete all the signatures'));
+ }
+}
+
+function clear_signature_form_submit($form, &$form_state) {
+ $nid = $form_state['values']['nid'];
+ //function to clear all the signatures from a petition.
+ db_query("DELETE FROM {petition_signatures} WHERE nid = %d", $nid);
+ drupal_set_message(t('All the signatures have been removed.'));
+}  
+
+
+/**
+ *Hook_mail
+ */
+function petition_mail($key, &$message, $params) {
+ switch ($key) {
+ case 'signature-confirm':
+  $message['to']=$params['to'];
+  $message['subject']=$params['subject'];
+  $message['body']=$params['body'];
+ case 'frequency-update':
+  $message['to']=$params['to'];
+  $message['subject']=$params['subject'];
+ $message['body']=$params['body'];
+ case 'campaign-over':
+  $message['to']=$params['to'];
+  $message['subject']=$params['subject'];
+ $message['body']=$params['body'];
+ }
+}
+
+/**
+ *Hook_cron
+ */
+function petition_cron() {
+ // delete the unconfirmed signatures older than 3 days
+ $three_days_ago = time()-3*24*3600;
+ db_query("DELETE FROM {petition_signatures} WHERE date < %d AND confirmed=0", $three_days_ago);
+ 
+ //For each petition with campaign settings enabled, check if the campaign is over.
+ $result = db_query("SELECT * FROM {petition} WHERE campaign_settings > 0 AND activation > 0");
+ while ($petition = db_fetch_object($result)) {
+  if (($petition->campaign_settings == 2 AND $petition->signatures >= $petition->signature_goal) OR ($petition->campaign_settings == 1 AND time() >= $petition->limit_date)) {
+   // if the campaign is over, send an email
+   $node = node_load($petition->nid);
+   $author = user_load(array('uid' => $node->uid));
+   $maintainer = $author->name;
+   $params['to'] = !valid_email_address($petition->pemail) ? $author->mail : $petition->pemail;
+   $defaultsubject = getdefault("campaing_is_over_email_subject");
+   $subject = variable_get('campaign_emailsubject_to_maintainer', $defaultsubject);
+   $subject = t($subject, array('@petitiontitle' => $node->title, '@number' => $petition->signatures, '@maintainer' => $maintainer, '@site' => variable_get('site_name', 'localhost')));
+   $params['subject'] = filter_xss($subject);
+   $defaultbody=getdefault("campaing_is_over_email_body");
+   $body = variable_get('campaign_emailbody_to_maintainer', $defaultbody);
+   $body = t($body, array('@petitiontitle' => $node->title, '@number' => $petition->signatures, '@maintainer' => $maintainer, '@site' => variable_get('site_name', 'localhost')));
+   $params['body'] = filter_xss($body);
+   drupal_mail('petition', 'campaign-over', $params['to'], language_default(), $params, variable_get('site_mail', NULL));
+   
+   // function to inactivate the form
+   if ($petition->auto_inactivation > 0) {
+    db_query("UPDATE {petition} SET activation = %d WHERE nid = %d", 0, $petition->nid);
+   }
+  }
+ } 
+}
+
+/**
+* Helper function to return the default subjects and bodies of emals
+*/
+ 
+function getdefault($id) {
+  switch ($id) {
+   case "confirmation_email_subject":
+    return t("Please confirm your signature for the petition '@petitiontitle'.");
+   
+   case "confirmation_email_body":
+    return t("Thank you for supporting the petition @petitiontitle with your signature. Please confirm your signature by clicking on the following link within the 3 days you have received this email:\n\n   @link \n\nOnce you have confirmed your signature, your IP address will be erased from the database, which will guarantee your privacy.");
+   
+   case "update_email_subject":
+    return t("Your petition @petitiontitle : @number signatures gathered so far");
+   
+   case "update_email_body":
+    return t("Dear @maintainer, \n\n Your petition @petitiontitle online on @site has gathered @number signatures so far. \n\n Best regards, \n\n @site 's team");
+   
+   case "campaing_is_over_email_subject":
+    return t("Your petition @petitiontitle : the campaign is over");
+   
+   case "campaing_is_over_email_body":
+    return t("Dear @maintainer, \n\nYour petition @petitiontitle online on @site has gathered @number signatures.\nThe campaign is considered over according the criteria you chose. If you have chosen to have the petition form automatically inactivated, the petition is now closed. You can however change these settings manually.\n\n Best regards, \n\n @site 's team ");
+   
+   case "description_confirmation_mail":
+    return t(" You can use the placeholders '@petitiontitle' for the petition title, '@firstname' for the petitioner's firstname, '@name' for the petitioner's name, '@link' for the confirmation link (If you do not include the link, the petitioner will be unable to confirm his signature) and '@site' for the site");
+   
+    case "description_maintainer_mail":
+    return t(' You can use the placeholders "@petitiontitle" for the petition title, "@number" for the number of signatures, "@maintainer" for the petition author, "@site" for the site');
+ 
+  }
+ 
+}
+
+  
+  

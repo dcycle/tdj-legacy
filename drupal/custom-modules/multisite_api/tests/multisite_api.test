@@ -1,0 +1,218 @@
+<?php
+// $Id: multisite_api.test,v 1.1.2.1.2.3 2009/06/06 14:11:25 dalin Exp $
+
+/**
+ * What can we test:
+ * - create a fake sites dir with various names
+ * - test that the dir shows up in the appropriate visibilities
+ * - create a settings.php file and ensure that all data is properly returned
+ */
+
+/**
+ * @file
+ * Unit tests for Multisite Login module.
+ */
+class MultisiteAPITestCase extends DrupalWebTestCase {
+
+  /**
+   * Drupal SimpleTest method: return metadata about the test.
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Mutlisite API'),
+      'description' => t('Executes test suite for Mutlisite API module.  '.
+        'YOU MUST GIVE THE APACHE USER PERMISSION TO WRITE TO THE SITES DIRECTORY '.
+        'SO THAT TEST SITES CAN BE CREATED.'),
+      'group' => t('Multisite'),
+    );
+  }
+
+  /**
+   * SimpleTest core method: code run before each and every test method.
+   */
+  function setUp() {
+    // Always call the set_up() function from the parent class.
+    parent::setUp();
+
+    // turn caching off, it'll screw up our temporary directories
+    variable_set('multisite_api_caching', FALSE);
+    // setting this variable tells multisite_api not to use the ini file
+    variable_set('multisite_api_unit_testing', TRUE);
+  }
+
+  /**
+   * SimpleTest core method: code run after each and every test method.
+   */
+  function tearDown() {
+    variable_del('multisite_api_caching');
+    variable_del('multisite_api_unit_testing');
+
+    // Finally...
+    parent::tearDown();
+  }
+
+  /**
+   * Create a dir of each type and confirm that we get all test values
+   */
+  function testMultisiteAPI() {
+
+    $sites_dir = dirname($_SERVER['SCRIPT_FILENAME']) .'/sites';
+    $rand = rand();
+
+    /*
+     * Things we are going to test
+     * These must all exist as drupal variables in the form multisite_api_{$test}
+     * We will create sites directories of these names
+     * and test the the multisite API returns them correctly
+     */
+    $tests = array(
+      'server' => array('development', 'staging', 'testing', 'production', ),
+      'visibility' => array('private', 'public', 'excluded', ),
+    );
+
+    foreach ($tests as $test_type => $test_list) {
+      foreach ($test_list as $test) {
+
+        // establish some test data
+        variable_set('multisite_api_'. $test,
+          ($test_type == 'visibility'  ? "foo_$test," : '') ."$test");
+        $vars['db_url'] = "mysql://$test:$test@localhost/main";
+        $vars['db_prefix'] = array(
+          'default' => "$test.",
+          'users' => '',
+          'sessions' => '',
+        );
+        $site_name = $test .'.'. $rand;
+        $vars['base_url'] = "http://". $_SERVER['SERVER_NAME'] .'/'. $test;
+        $vars['foo'] = "bar_$test";
+
+        // create a sites dir and settings.php
+        try {
+          $this->_makeSettingsPhp($sites_dir .'/'. $site_name, $vars);
+        }
+        catch (Exception $e) {
+          $this->assertTrue(FALSE, $e->getMessage());
+          return;
+        }
+
+        $this->assertTrue(TRUE, "multisite_api_$test: ". variable_get('multisite_api_'. $test, ''));
+
+        // get our multisite_api data
+        foreach ($test_list as $test_instance) {
+          if ($test_type == 'server') {
+            $sites = multisite_api_site_list($test_instance, NULL, TRUE, FALSE);
+            $site_names = multisite_api_get_site_names($test_instance, NULL);
+          }
+          else {
+            $sites = multisite_api_site_list(NULL, $test_instance, TRUE, FALSE);
+            $site_names = multisite_api_get_site_names('production', $test_instance);
+          }
+          $site_test_type = isset($sites[$site_name][$test_type]) 
+            ? $sites[$site_name][$test_type] : '';
+
+//           $this->assertTrue(TRUE, '$sites: <pre>'. var_export($sites, TRUE) .'</pre>');
+//           $this->assertTrue(TRUE, '$site_names: <pre>'. var_export($site_names, TRUE) .'</pre>');
+//           $this->assertTrue(TRUE, 'multisite_api_get_site_server(): <pre>'. var_export(multisite_api_get_site_server(), TRUE) .'</pre>');
+//           $this->assertTrue(TRUE, 'multisite_api_get_site_visibility(): <pre>'. var_export(multisite_api_get_site_visibility(), TRUE) .'</pre>');
+
+          // run assertions
+          // excluded sites should never be returned
+          if ($test_instance == $test && $test != 'excluded') {
+
+            // is the site returned as the right type (and not in other types)?
+            $this->assertEqual($test_instance, $site_test_type,
+              "testing $site_name ($site_test_type) is on $test_instance server");
+
+            // is each var returned correctly?
+            foreach ($vars as $var => $value) {
+              if (!$this->assertEqual($value, $sites[$site_name][$var],
+                "testing $var is returned for site $site_name")
+              ) {
+                $this->assertTrue(FALSE, $value .': '. $sites[$site_name][$var]);
+              }
+            }
+
+            // assert that site is returned correctly by multisite_api_get_site_names()
+            $this->assertTrue(array_key_exists($site_name, $site_names),
+              "testing $site_name is in names $test_instance");
+          }
+          else {
+
+            // is the site returned on the right server (and not on other servers)?
+            $this->assertNotEqual($test_instance, $site_test_type,
+              "testing $site_name ($site_test_type) is not on $test_instance server");
+
+            // assert that site is returned correctly by multisite_api_get_site_names()
+            $this->assertFalse(array_key_exists($site_name, $site_names),
+              "testing $site_name is not in names $test_instance");
+          }
+
+        }
+
+        // garbage cleanup
+        $this->_deleteSettingsPhp($sites_dir .'/'. $site_name);
+        variable_del('multisite_api_'. $test);
+
+      }
+    }
+  }
+
+  /**
+   * Create a settings.php file
+   * @param string $dir
+   *  the sites dir in which to create the file
+   *  full paths please
+   * @param array $vars
+   *  an array of all variables to create in the file
+   *  vars can only be single dimmensional arrays, or scalars
+   */
+  function _makeSettingsPhp($dir, $vars) {
+    $output = '';
+    foreach ($vars as $name => $var) {
+
+      // convert array to a string that makes the array,
+      // only works with one dimensional arrays
+      if (is_array($var)) {
+        $array = '';
+        foreach ($var as $key => $value) {
+          $array .= '"'. $key .'" => "'. $value .'", ';
+        }
+        $output .= '$'. $name .' = array('. $array .");\n";
+      }
+      elseif (is_scalar($var)) {
+        $output .= '$'. $name .' = "'. $var ."\";\n";
+      }
+    }
+    $output = '<?php '. $output;
+
+    // build file
+    if (!is_dir($dir)) {
+      if (is_dir(dirname($dir))) {  // might need two dirnames, not sure
+        if (!@mkdir($dir, 0777, TRUE)) {
+          throw new Exception(t('You must give the apache user permission to write to the sites '.
+            'directory so that test sites can be created.'));
+        }
+      }
+      else {
+        return FALSE;
+      }
+    }
+    if (is_file($dir .'/settings.php')) {
+      if (!@unlink($dir .'/settings.php')) {
+        throw new Exception(t('You must give the apache user permission to write to the sites '. 
+          'directory so that test sites can be created.'));
+      }
+    }
+    if (!touch ($dir .'/settings.php')) {
+      throw new Exception(t('You must give the apache user permission to write to the sites '. 
+        'directory so that test sites can be created.'));
+    }
+    return file_put_contents($dir .'/settings.php', $output);
+  }
+
+  function _deleteSettingsPhp($dir) {
+    unlink($dir .'/settings.php');
+    rmdir($dir);
+  }
+
+}

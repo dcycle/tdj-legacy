@@ -1,0 +1,464 @@
+<!DOTHER_CURRENCYTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" >
+<!--
+
+mediatribe
+
+we need:
+
+	type: purchase or don
+	email address of paypal account
+	currency
+	thank you page
+	Name of item
+	fixed amount or user-defined amount
+	the actual amount
+	advanced
+	la page de retour /thanks ou /merci
+
+
+ * File Name: fck_insertHtmlCode.html
+ * 	Insert Code dialog window.
+ * 
+ * File Authors:
+ * 		Abdul-Aziz Al-Oraij (top7up@hotmail.com)
+ * 		Michel Staelens
+ * 		Bernadette Cierzniak
+ * 		Frederico Caldeira Knabben (fredck@fckeditor.net)
+ *      Nico Piponides	
+-->
+<html>
+	<head>
+		<title>Insert PayPal Code</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta content="noindex, nofollow" name="robots">
+		<link rel="stylesheet" type="text/css" href="fck_insertHtmlCode.css" />
+<script type="text/javascript" src="dialogue.js"></script>
+		<script type="text/javascript">
+
+var oEditor = window.parent.InnerDialogLoaded() ;
+
+window.onload = function()
+{
+	document.body.style.padding = '0px' ;
+
+	// First of all, translate the dialog box texts
+	oEditor.FCKLanguageManager.TranslatePage(document) ;
+
+	window.parent.SetOkButton( true ) ;
+	window.parent.SetAutoSize( true ) ;	
+	
+	MenuHasChanged();
+}
+
+function SetLangOf(elem, txt) {
+
+	aaa = document.getElementById( elem );
+	
+	if(aaa) {
+	
+		aaa.innerHTML = txt;
+	}
+	//else { alert(elem+" is not available") } not good for production, better to just ignore problems because it is not mission-critical
+}
+
+function SetLang(aLang) {
+
+	switch(aLang) {
+
+
+		case 'fr':
+
+			SetLangOf('tLanguage', "Langue");
+			SetLangOf('tDonation', "Don");
+			SetLangOf('tPurchase', "Achat");
+			SetLangOf('tSubscription', "Abonnement mensuel");
+			SetLangOf('tPayPalAccountEmail', "Courriel (email) de votre compte PayPal");
+			SetLangOf('tPayPalAccountEmailDesc', "Par exemple moi@monentreprise.net. Ce n'est pas nécessaire que ce soit un compte existant; si ce n'est pas le cas, PayPal vous guidera dans les étapes pour créer un compte PayPal lors de votre premier paiement.");
+			SetLangOf('tTransactionAmountType', "Type de montant de transaction");
+			SetLangOf('tUserDefined', "Non-prédéfini (c'est le payeur qui détermine le montant)");
+			SetLangOf('tPredetermined', "Prédéfini (fixé d'avance)");
+			SetLangOf('tTransactionAmount', "Montant de la transaction");
+			SetLangOf('tItemTitle', "Titre de l'item");
+			SetLangOf('tItemTitleDesc', "Par exemple <span style=\"color:red\">Ventilateur haute-performance< /span> ou <span style=\"color:red\">Donnez généreusement pour mes études< /span>");
+			SetLangOf('tDevise', "Devise");
+			SetLangOf('tCAD', "CAD ($ Canadiens)");
+			SetLangOf('tUSD', "USD ($US)");
+			SetLangOf('tEUR', "EUR (Euros €)");
+			SetLangOf('tGBP', "GBP (Livres ₤)");
+			SetLangOf('tOther', "Autre...");
+			SetLangOf('tTransactionAmountDesc', "par exemple: 4.50, 59.95...");
+			SetLangOf('tCustomCurrencyCode', "Autre code de devise");
+			SetLangOf('tCustomCurrencyCodeDesc', "<span style=\"color:red\">USD< /span> ($US), <span style=\"color:red\">CAD< /span> ($Canadien), <span style=\"color:red\">GBP< /span> (£), <span style=\"color:red\">EUR< /span> (Euros)... (vous référer à PayPal.com pour plus de codes de devises.)");
+			break;
+
+
+		case 'en':
+		default:
+
+			SetLangOf('tTransactionAmountDesc', "for example: 4.50, 59.95...");
+			SetLangOf('tLanguage', "Language");
+			SetLangOf('tDonation', "Donation");
+			SetLangOf('tPurchase', "Purchase");
+			SetLangOf('tSubscription', "Monthly Subscription");
+			SetLangOf('tPayPalAccountEmail', "PayPal Account Email");
+			SetLangOf('tPayPalAccountEmailDesc', "for example me@mycompany.net. Does not have to be an existing PayPal account. If it is not an existing account, you will be prompted to created an account when the first payment is made to you.");
+			SetLangOf('tTransactionAmountType', "Transaction Amount Type");
+			SetLangOf('tUserDefined', "User-defined");
+			SetLangOf('tPredetermined', "Predetermined (fixed)");
+			SetLangOf('tTransactionAmount', "Transaction Amount");
+			SetLangOf('tItemTitle', "Item Title");
+			SetLangOf('tItemTitleDesc', "For example <span style=\"color:red\">High-performance fan< /span> or <span style=\"color:red\">Give generously for my studies< /span>");
+			SetLangOf('tDevise', "Currency");
+			SetLangOf('tCAD', "CAD (Canadian $)");
+			SetLangOf('tUSD', "USD ($US)");
+			SetLangOf('tEUR', "EUR (Euros €)");
+			SetLangOf('tGBP', "GBP (Pounds ₤)");
+			SetLangOf('tOther', "Other...");
+			SetLangOf('tCustomCurrencyCode', "Custom currency code");
+			SetLangOf('tCustomCurrencyCodeDesc', "<span style=\"color:red\">USD< /span> ($US), <span style=\"color:red\">CAD< /span> ($Canadian), <span style=\"color:red\">GBP< /span> (£), <span style=\"color:red\">EUR< /span> (Euros)... (refer to PayPal.com for more currency codes.)");
+			break;
+		}
+}
+
+function MenuHasChanged() {
+
+	var oAreaLANG = document.getElementById( 'idLANG' ) ;
+	var oAreaTRANS_TYPE = document.getElementById( 'idTRANS_TYPE' ) ;
+	var oAreaTRANSACTION_AMOUNT_TYPE = document.getElementById( 'idTRANSACTION_AMOUNT_TYPE' );
+	var oAreaC = document.getElementById( 'idSELECTED_CURRENCY' );
+	
+	theLangValue = oAreaLANG.value;
+	theTransTypeValue = oAreaTRANS_TYPE.value;
+	theTransAmountType = oAreaTRANSACTION_AMOUNT_TYPE.value;
+	theMenuCurrency = oAreaC.value;
+	
+	switch(theLangValue) {
+		
+		case 'fr':
+			SetLang('fr');
+			break;
+		case 'en':
+		default:
+			SetLang('en');
+			break;
+	
+	}
+	
+	switch(theTransTypeValue) {
+	
+      case 'donation':
+      
+      	// idTRANSACTION_AMOUNT_TYPE can be userdef or fixed
+      
+      	break;
+      case 'purchase':	
+      
+      	// idTRANSACTION_AMOUNT_TYPE can be userdef or fixed
+      
+      	break;
+	}
+
+	switch(theTransAmountType) {
+	
+		case 'fixed':
+			show('idTRANSACTION_AMOUNTB');
+			break;
+		case 'userdef':
+			hide('idTRANSACTION_AMOUNTB');
+			break;
+	
+	}
+
+	switch(theMenuCurrency) {
+	
+		case 'CAD':
+		case 'USD':
+			setcursym('$', 'bef');
+			hide('idOTHER_CURRENCYB');
+			break;
+		case 'EUR':
+			setcursym('€', 'aft');
+			hide('idOTHER_CURRENCYB');
+			break;
+		case 'GBP':
+			setcursym('£', 'bef');
+			hide('idOTHER_CURRENCYB');
+			break;
+		case 'other':
+			setcursym('');
+			show('idOTHER_CURRENCYB');
+			break;
+	
+	}
+
+}
+
+function setcursym(sym, where) {
+
+	theName = name;
+
+	aaa = document.getElementById( 'cursymbef' );
+	
+	if(where == 'bef') { 
+		aaa.innerHTML = sym;
+	} else {
+		aaa.innerHTML = '';
+	}
+
+	aaa = document.getElementById( 'cursymaft' );
+	
+	if(where == 'aft') { 
+		aaa.innerHTML = sym;
+	} else {
+		aaa.innerHTML = '';
+	}
+
+
+}
+
+// taken from http://www.javascriptkit.com/javatutors/dom3.shtml (((MODIFIED
+function hide(which){
+	which = document.getElementById(which)
+	which.style.display="none"
+}
+function show(which){
+	which = document.getElementById(which)
+	which.style.display="block"
+}
+
+function translate(lg, item) {
+
+	switch(lg) {
+		
+		case 'fr':
+		
+		
+			switch(item) {
+				case 'tTypeBad':
+					return 'Le type de transaction doit être un don, un achat ou  un abonnement';
+					break;
+				case 'tAccountBad':
+					return 'Votre compte PayPal doit être une adresse courriel valide';
+					break;
+				case 'tTransAmoutTypeBad':
+					return 'Le type de montant de transaction n\'est pas valide';
+					break;
+				case 'tTitleBad':
+					return 'Vous devez donner un titre à votre item';
+					break;
+					
+				default:
+					return 'impossible de traduire '+item;
+					break;
+			}
+
+
+			break;
+		case 'en':
+		default:
+
+			switch(item) {
+				case 'tTypeBad':
+					return 'The type should be either a donation or a purchase or a subscription';
+					break;
+				case 'tAccountBad':
+					return 'Your paypal email address is not valid';
+					break;
+				case 'tTransAmoutTypeBad':
+					return 'Your transaction amount type should be either userdef or fixed';
+					break;
+				case 'tTitleBad':
+					return 'You must give your item a title';
+					break;
+					
+				default:
+					return 'impossible to translate '+item;
+					break;
+			}
+
+			break;
+	}
+}
+
+function Ok()
+{
+/*	orig code 
+*
+	var oArea = document.getElementById( 'insCode_area' ) ;
+
+	if ( oArea.value.length > 0 )
+		oEditor.FCK.InsertHtml( oArea.value ) ;
+
+	return true ; / */
+
+	
+	var oAreaLANG = document.getElementById( 'idLANG' ) ;
+	var oAreaTRANS_TYPE = document.getElementById( 'idTRANS_TYPE' ) ;
+	var oAreaPAYPAL_EMAIL = document.getElementById( 'idPAYPAL_EMAIL' ) ;
+	var oAreaTRANSACTION_AMOUNT_TYPE = document.getElementById( 'idTRANSACTION_AMOUNT_TYPE' ) ;
+	var oAreaTRANSACTION_AMOUNT = document.getElementById( 'idTRANSACTION_AMOUNT' ) ;
+	var oAreaITEM_TITLE = document.getElementById( 'idITEM_TITLE' ) ;
+	var oAreaSELECTED_CURRENCY = document.getElementById( 'idSELECTED_CURRENCY' ) ;
+	var oAreaOTHER_CURRENCY = document.getElementById( 'idOTHER_CURRENCY' ) ;
+
+	var theTextLANG = oAreaLANG.value;
+	var theTextTRANS_TYPE = oAreaTRANS_TYPE.value;
+	var theTextPAYPAL_EMAIL = oAreaPAYPAL_EMAIL.value;
+	var theTextTRANSACTION_AMOUNT_TYPE = oAreaTRANSACTION_AMOUNT_TYPE.value;
+	var theTextTRANSACTION_AMOUNT = oAreaTRANSACTION_AMOUNT.value;
+	var theTextITEM_TITLE = oAreaITEM_TITLE.value;
+	var theTextSELECTED_CURRENCY = oAreaSELECTED_CURRENCY.value;
+	var theTextOTHER_CURRENCY = oAreaOTHER_CURRENCY.value;
+
+	var theError = CheckText(theTextLANG, theTextTRANS_TYPE, theTextPAYPAL_EMAIL, theTextTRANSACTION_AMOUNT_TYPE, theTextTRANSACTION_AMOUNT, theTextITEM_TITLE, theTextSELECTED_CURRENCY, theTextOTHER_CURRENCY);
+
+	var theParsedText = ParseText(theTextLANG, theTextTRANS_TYPE, theTextPAYPAL_EMAIL, theTextTRANSACTION_AMOUNT_TYPE, theTextTRANSACTION_AMOUNT, theTextITEM_TITLE, theTextSELECTED_CURRENCY, theTextOTHER_CURRENCY);
+
+	if ( theError ) {
+
+		alert(translate(theTextLANG, theError));
+
+		return false;
+		
+	} else {
+
+		oEditor.FCK.InsertHtml( theParsedText ) ;
+
+		return true ;
+	}
+}
+
+		</script>
+	</head>
+	
+	
+	<body style="OVERFLOW: hidden" scroll="no">
+<form name="form1" method="post" action="">
+
+<!-- idLANG
+
+	fr = français
+	en = english
+
+-->
+
+<span>
+   		<span id="tLanguage">Language:</span> <select id="idLANG" name="idLANG" onChange="MenuHasChanged()">
+	      <option value="fr">français</option>
+      <option value="en" selected>English</option>
+    </select>
+</span>
+
+<!-- idTRANS_TYPE
+
+	donation = the transaction type is a donation
+	purchase = the transaction type is a purchase
+
+-->
+
+<span>
+   		Type: <select id="idTRANS_TYPE" name="idTRANS_TYPE" onChange="MenuHasChanged()">
+	      <option value="donation" id="tDonation"">Donation</option>
+      <option value="purchase" id="tPurchase" selected>Purchase</option>
+  <!--    <option value="subscription" id="tSubscription">Subscription</option> -->
+    </select>
+</span>
+
+<!-- idPAYPAL_EMAIL
+
+	the email address associated with this paypal account
+
+-->
+
+<span display="block">
+  <p><span id="tPayPalAccountEmail">PayPal account email</span>:</p>
+  <p> 
+    <input type="text" id="idPAYPAL_EMAIL" name="idPAYPAL_EMAIL">
+  </p>
+  <p><span id="tPayPalAccountEmailDesc">ce n'est pas nécessaire que le compte existe -- vous pourrez créer votre compte PayPal lors de votre première commande</span></p>
+</span>
+
+<!-- idTRANSACTION_AMOUNT_TYPE
+
+	userdef = the user can put any amount he / she wishes
+	fixed = must be predetermined
+
+-->
+
+<span>
+   		<span id="tTransactionAmountType">Transaction amount type</span>: <select id="idTRANSACTION_AMOUNT_TYPE" name="idTRANSACTION_AMOUNT_TYPE" onChange="MenuHasChanged()">
+	      <option value="userdef" id="tUserDefined">User-defined</option>
+      <option value="fixed" id="tPredetermined" selected>Predetermined (fixed)</option>
+    </select>
+</span>
+
+<!-- idTRANSACTION_AMOUNT
+
+	format 12.34
+	
+	the amount of this transaction (ignored if idTRANSACTION_AMOUNT_TYPE user-defined, required if idTRANSACTION_AMOUNT_TYPE is fixed)
+
+-->
+
+<span display="block" id="idTRANSACTION_AMOUNTB">
+  <p><span id="tTransactionAmount">Transaction amount</span>:</p>
+  <p> 
+    <span id="cursymbef">$</span><input type="text" id="idTRANSACTION_AMOUNT" name="idTRANSACTION_AMOUNT"><span id="cursymaft"></span>
+  </p>
+  <p><span id="tTransactionAmountDesc">for example: 4.50, 59.95...</span></p>
+</span>
+
+<!-- idITEM_TITLE
+
+	always required
+	
+	the name of this item
+
+-->
+
+<span display="block">
+  <p><span id="tItemTitle">Item title</span>:</p>
+  <p> 
+    <input type="text" id="idITEM_TITLE" name="idITEM_TITLE">
+  </p>
+  <p><span id="tItemTitleDesc">par exemple <span style="color:red">Ventilateur haute-performance</span> ou <span style="color:red">Don pour mes études</span></span></p>
+</span>
+
+<!-- idSELECTED_CURRENCY
+
+	a list of currencies
+	
+	if equal to other, then use idOTHER_CURRENCY
+
+-->
+
+<span>
+   		<span id="tDevise">Currency</span>: <select id="idSELECTED_CURRENCY" name="idSELECTED_CURRENCY" onChange="MenuHasChanged()">
+	      <option value="CAD" id="tCAD">CAD (Canadian $)</option>
+      <option value="USD" selected id="tUSD">USD ($US)</option>
+	      <option value="EUR" id="tEUR">EUR (Euros €)</option>
+	      <option value="GBP" id="tGBP">GBP (Pounds ₤)</option>
+	      <option value="other" id="tOther">Other...</option>
+    </select>
+</span>
+
+<!-- idOTHER_CURRENCY
+
+	user-defined currency, required if idSELECTED_CURRENCY set to other, 
+	
+	ignored if idSELECTED_CURRENCY set to other than other
+
+-->
+
+<span display="block" id="idOTHER_CURRENCYB">
+  <p><span id="tCustomCurrencyCode">Custom currency code</span>:</p>
+  <p> 
+    <input type="text" id="idOTHER_CURRENCY" name="idOTHER_CURRENCY">
+  </p>
+  <p><span id="tCustomCurrencyCodeDesc"><span style="color:red">USD</span> ($US), <span style="color:red">CAD</span> ($Canadiens), <span style="color:red">GBP</span> (£), <span style="color:red">EUR</span> (Euros)... (vous référer au site de PayPal pour plus de devises.</span></p>
+</span>
+
+		  </form> 
+
+	</body>
+</html>

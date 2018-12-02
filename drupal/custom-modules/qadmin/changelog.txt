@@ -1,0 +1,4 @@
+Qadmin 6.x-1.x-dev 2009-06-11
+-----------------------------
+
+Initial development release.

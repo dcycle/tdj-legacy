@@ -1,0 +1,4 @@
+080625145225
+	fckeditor.config.js (see mediatribe)
+	plugins/form, pp, video, inserthtml
+	fckeditor/editor/filemanager/connectors/php/config.php

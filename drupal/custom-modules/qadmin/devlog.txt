@@ -1,0 +1,45 @@
+This file is a development diary for the drupal module Qadmin
+
+A short description
+-------------------
+
+This system provides a control panel to manage several aspects of business relationships, projects and products for Qumbia.ca and its clients.
+
+How it works
+------------
+
+The UI provides a main interface available at /qadmin
+
+On this interface you will find access to the following:
+
+- Domain names
+- Websites
+- Projects
+- Issues
+- Email addresses
+- Invoices
+- Tasks
+- Worksessions
+- Billlines
+
+(on the development side, a hook will be provided for other modules to provide sections here)
+
+Domain names
+------------
+
+Let's start with an example usecase:
+
+(1) Client clicks on Domain names
+  (1.1) System checks the GoDaddy domain module.
+    (1.1.1) System figures out that the domain name autodom.com was purchased through the system and the godaddy api, and finds all relevant info online.
+  (1.2) System checks the WorldDomain domain module
+    (1.2.1) System figures out that the domain name autodom2.com was purchased through the system and the worlddomain api.
+  (1.3) System checks the other domain module
+    (1.3.1) Other domain module cannot give an answer right away, it checks with the human responsible for entering domains in the system, by sending an email to that person with a specific URL to fill in after.
+    (1.3.2) Other domain module returns a monitor as an answer.
+(2) Domain API returns an incomplete List object back to the UI, wrapped in an Answer object.
+(3) UI checks the List object, and gets the number of elements, which is between 2 and infinity.
+(4) UI displays the two there are to display, and says that the list might be incomplete, check back later or be informed when the request is complete.
+(5) Client logs out. 
+
+(6) Client clicks on Domain names

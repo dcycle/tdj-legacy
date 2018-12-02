@@ -1,0 +1,47 @@
+/* $Id: signaturedisplay.css,v 1.1.2.3 2009/05/05 10:20:20 gauvain Exp $  */
+
+/*Classes used for the signature diplay modes showing only the petitioners' names*/
+span.signature {
+    color: #333333;
+    margin-left: 4px;
+    
+}
+
+span.signature_position {
+     font-weight: 500;
+    
+}
+
+
+span.signature_lastname {
+     font-weight: 500;
+     
+}
+
+
+span.signature_firstname {
+     font-variant: small-caps;
+}
+
+/*Classes used for the alphabetical display mode*/
+.alphabet_output {
+ margin-bottom: 20px;
+ font: 14px/180% Verdana, sans-serif;
+}
+
+.alphabet_output a {
+    padding: 1px;
+    text-decoration:none;
+}
+
+.alphabet_output a.marked, .alphabet_output a.unmarked:hover {
+    background-color : #0066CC;
+    color : #FFFFFF;
+    text-decoration:none;
+}
+
+.alphabet_output a.unmarked {
+    color : #0066CC;
+    text-decoration:none;
+}
+

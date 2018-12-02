@@ -1,0 +1,23 @@
+//$Id: INSTALL.txt,v 1.1 2008/09/30 11:11:05 aclight Exp $
+
+Follow the steps below to properly configure the Comment alter taxonomy module.
+
+1.  Enable the module from the admin/build/modules page.
+2.  If you have not already done so, create one or more vocabularies from the
+    admin/content/taxonomy page.  Comment alter taxonomy supports all types
+    of vocabularies, including free tagging and multiple select vocabularies.
+    Make sure that you specify the content types to which each vocabulary
+    applies when editing the vocabulary.
+3.  Go to the Comment alter taxonomy admin settings page at
+    admin/settings/comment_alter_taxonomy and check each vocabulary
+    that you want to be alterable from comments.  You will need to have the
+    "administer site configuration" permission to access this page.
+4.  Go to the Access control administration page at admin/user/access and
+    specify which user roles have the permission to alter terms from comments
+    for each vocabulary.
+
+NOTE:  For a user to be able to change the terms on a node from a comment,
+*both* of the following conditions must be true:
+  a) The vocabulary must be set to be alterable from comments (step 3 above).
+  b) The user must have the permission to alter terms from comments for the
+     given node type (step 4 above).

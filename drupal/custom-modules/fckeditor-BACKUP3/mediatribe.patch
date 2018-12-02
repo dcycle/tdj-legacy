@@ -1,0 +1,98 @@
+? LICENSE.txt
+? _documentation.html
+? _samples
+? fckeditor.modified_by_mediatribe
+? mediatribe.patch
+? mediatribe_changes.txt
+? fckeditor/_documentation.html
+? fckeditor/_samples
+? fckeditor/_upgrade.html
+? fckeditor/_whatsnew.html
+? fckeditor/_whatsnew_history.html
+? fckeditor/editor
+? fckeditor/fckconfig.js
+? fckeditor/fckeditor.afp
+? fckeditor/fckeditor.asp
+? fckeditor/fckeditor.cfc
+? fckeditor/fckeditor.cfm
+? fckeditor/fckeditor.js
+? fckeditor/fckeditor.lasso
+? fckeditor/fckeditor.php
+? fckeditor/fckeditor.pl
+? fckeditor/fckeditor.py
+? fckeditor/fckeditor_php4.php
+? fckeditor/fckeditor_php5.php
+? fckeditor/fckpackager.xml
+? fckeditor/fckstyles.xml
+? fckeditor/fcktemplates.xml
+? fckeditor/fckutils.cfm
+? fckeditor/license.txt
+? plugins/form
+? plugins/insertHtmlCode
+? plugins/paypal
+? plugins/video
+Index: fckeditor.config.js
+===================================================================
+RCS file: /cvs/drupal-contrib/contributions/modules/fckeditor/fckeditor.config.js,v
+retrieving revision 1.5.2.14
+diff -u -p -r1.5.2.14 fckeditor.config.js
+--- fckeditor.config.js	16 Feb 2009 10:38:28 -0000	1.5.2.14
++++ fckeditor.config.js	27 Sep 2009 14:11:56 -0000
+@@ -6,6 +6,14 @@
+ */
+ 
+ /*
++
++mediatribe
++
++	now based on fckeditor.config.js,v 1.5.2.14 2009/02/16 10:38:28 wwalc
++	090127 removed form
++	now based on fckeditor.config.js,v 1.5.2.13 2008/12/12 19:45:25 wwalc
++	now based on fckeditor.config.js,v 1.5.2.8 2008/10/15 14:48:13 wwalc
++
+  Define as many toolbars as you need, you can change toolbar names
+  DrupalBasic will be forced on some smaller textareas (if enabled)
+  if you change the name of DrupalBasic, you have to update
+@@ -58,6 +66,18 @@ FCKConfig.ToolbarSets["DrupalBasic"] = [
+ ['FontFormat','-','Bold','Italic','-','OrderedList','UnorderedList','-','Link','Unlink', 'Image']
+ ] ;
+ 
++FCKConfig.ToolbarSets["Mediatribe"] = [[
++
++'Paste', 'FontFormat', 'Bold', 'Italic', 'TextColor', 'JustifyLeft','JustifyCenter','JustifyRight', 'OrderedList','UnorderedList', 'Table', 'SpecialChar', 'Find', '-'], ['DrupalBreak', 'Source', 'FitWindow', 'Link', 'Unlink', 'Image', 'insertHtmlCode', 'paypal']
++] ;
++
++FCKConfig.ToolbarSets["MediatribeTest"] = [[
++
++'Paste', 'FontFormat', 'Bold', 'Italic', 'TextColor', 'JustifyLeft','JustifyCenter','JustifyRight', 'Link', 'Unlink', 'Image', 'OrderedList','UnorderedList', 'Table', 'SpecialChar', 'Find', '-'], ['DrupalBreak', 'Source', 'FitWindow', 'video', 'paypal']
++] ;
++
++FCKConfig.GoogleMaps_Key = 'ABQIAAAAlXu5Pw6DFAUgqM2wQn01gxT2yXp_ZAY8_ufC3CFXhHIE1NvwkxSy5hTGQdsosYD3dz6faZHVrO-02A'
++  ;
+ //This toolbar should work fine with "Filtered HTML" filter
+ FCKConfig.ToolbarSets["DrupalFiltered"] = [
+ ['Source'],
+@@ -111,6 +131,23 @@ if ( FCK.GetData ) {
+ // (as does Drupal), so just leave this line as is.
+ FCKConfig.ProtectedSource.Add( /<\?[\s\S]*?\?>/g ) ;	// PHP style server side code
+ 
++//uncomment these three lines to enable teaser break and page break plugins
++//remember to add 'DrupalBreak' and 'DrupalPageBreak' buttons to the toolbar
++
++FCKConfig.PluginsPath = '../../plugins/' ;
++FCKConfig.Plugins.Add( 'drupalbreak' ) ;
++FCKConfig.Plugins.Add( 'insertHtmlCode' ) ;
++FCKConfig.Plugins.Add( 'video' ) ;
++FCKConfig.Plugins.Add( 'paypal' ) ;
++// FCKConfig.Plugins.Add( 'form' ) ;
++// FCKConfig.Plugins.Add( 'mtinsert' ) ; // mediatribe
++// FCKConfig.Plugins.Add( 'mtvideo3' ) ; // mediatribe
++//FCKConfig.Plugins.Add( 'mtvideo2' ) ; // mediatribe
++// FCKConfig.Plugins.Add( 'mtvideo' ) ; // mediatribe
++//FCKConfig.Plugins.Add( 'youtube' , 'en,ja') ; // mediatribe
++
++//FCKConfig.Plugins.Add( 'drupalpagebreak' ) ;
++
+ var _FileBrowserLanguage	= 'php' ;
+ var _QuickUploadLanguage	= 'php' ;
+ 

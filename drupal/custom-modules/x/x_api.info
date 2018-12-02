@@ -1,0 +1,7 @@
+; $Id$
+
+name = X API
+
+description = API for displaying and keeping track of exceptions, and notifying a tech by email when exceptions occur.
+
+core = 6.x

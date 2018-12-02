@@ -1,0 +1,963 @@
+# $Id: petition_node.pot,v 1.1.2.2 2009/05/23 10:26:15 gauvain Exp $
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  petition-signatures-admin.inc,v 1.1.2.4 2009/05/05 10:20:20 gauvain
+#  petition.module,v 1.1.2.6 2009/05/20 21:54:37 gauvain
+#  signaturedisplay.module,v 1.1.2.3 2009/05/05 10:20:20 gauvain
+#  petition.install,v 1.1.2.5 2009/05/20 21:54:37 gauvain
+#  petition.info,v 1.1.2.5 2009/05/20 21:54:37 gauvain
+#  signaturedisplay.info,v 1.1.2.4 2009/05/20 21:54:37 gauvain
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2009-05-23 11:25+0200\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: petition-signatures-admin.inc:33
+msgid "No items selected."
+msgstr ""
+
+#: petition-signatures-admin.inc:65
+msgid "Are you sure you want to delete these signatures?"
+msgstr ""
+
+#: petition-signatures-admin.inc:66
+msgid "This action cannot be undone."
+msgstr ""
+
+#: petition-signatures-admin.inc:67
+msgid "Delete all"
+msgstr ""
+
+#: petition-signatures-admin.inc:67
+msgid "Cancel"
+msgstr ""
+
+#: petition-signatures-admin.inc:77
+msgid "The items have been deleted."
+msgstr ""
+
+#: petition-signatures-admin.inc:92
+msgid "Delete Signatures"
+msgstr ""
+
+#: petition-signatures-admin.inc:103
+msgid "Delete Selected Signatures"
+msgstr ""
+
+#: petition-signatures-admin.inc:114 petition.module:282
+msgid "Signature position"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:267;282;1261;1422 signaturedisplay.module:224
+msgid "Surname"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:267;282;1261;1432 signaturedisplay.module:224
+msgid "First name"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173
+msgid "Self-description"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:267;282;1261 signaturedisplay.module:224
+msgid "Address"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:267;282;1261 signaturedisplay.module:224
+msgid "ZIP code"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:267;282;1261;1469 signaturedisplay.module:224
+msgid "Town"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:267;282;1261;1486;1496 signaturedisplay.module:224
+msgid "Country"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:267;282;1261 signaturedisplay.module:224
+msgid "Phone number"
+msgstr ""
+
+#: petition-signatures-admin.inc:114;173 petition.module:282;1261;1506 signaturedisplay.module:224
+msgid "Email"
+msgstr ""
+
+#: petition-signatures-admin.inc:173
+msgid ""
+msgstr ""
+
+#: petition-signatures-admin.inc:173 petition.module:267;282;1261 signaturedisplay.module:224
+msgid "Accept to be informed of the campaign"
+msgstr ""
+
+#: petition-signatures-admin.inc:173 petition.module:282;1261 signaturedisplay.module:224
+msgid "language"
+msgstr ""
+
+#: petition-signatures-admin.inc:211
+msgid "No signatures available."
+msgstr ""
+
+#: petition.module:20
+msgid "Do not display the signatures to the public"
+msgstr ""
+
+#: petition.module:27
+msgid "Normal display"
+msgstr ""
+
+#: petition.module:43
+msgid "Petition"
+msgstr ""
+
+#: petition.module:45
+msgid "Create online petitions"
+msgstr ""
+
+#: petition.module:47;373;400;832
+msgid "Title"
+msgstr ""
+
+#: petition.module:49
+msgid "Short presentation"
+msgstr ""
+
+#: petition.module:51
+msgid "Petition text"
+msgstr ""
+
+#: petition.module:107
+msgid "View and edit all the available petitions on your site"
+msgstr ""
+
+#: petition.module:118
+msgid "View and edit your petitions"
+msgstr ""
+
+#: petition.module:129
+msgid "Global configuration of the petition settings"
+msgstr ""
+
+#: petition.module:222
+msgid "Petitions geographic properties"
+msgstr ""
+
+#: petition.module:225
+msgid "If you have the IP to country (IP2CC) and the countries api modules enabled, you can enable the country restriction and the country check property"
+msgstr ""
+
+#: petition.module:231;544
+msgid "Country check"
+msgstr ""
+
+#: petition.module:232;545
+msgid "If enabled, this will allow users to create petitions checking a petitioner's IP address  corresponds to the country he/she entered in his/her signature. This is a way of reducing fraud."
+msgstr ""
+
+#: petition.module:239
+msgid "Country restriction"
+msgstr ""
+
+#: petition.module:240
+msgid "If enabled, it will allow users to create petitions that can only be signed from the chosen countries. This is a way of keeping internal affairs more internal."
+msgstr ""
+
+#: petition.module:251
+msgid "Petitions fields"
+msgstr ""
+
+#: petition.module:258
+msgid "Fields included in the signature form"
+msgstr ""
+
+#: petition.module:261
+msgid "Choose the signature fields a petition author should be allowed to set in their petition."
+msgstr ""
+
+#: petition.module:266
+msgid "Report fields"
+msgstr ""
+
+#: petition.module:267;282;1261;1442 signaturedisplay.module:224
+msgid "Other (activity, status etc)"
+msgstr ""
+
+#: petition.module:273
+msgid "Fields included in the petition reports"
+msgstr ""
+
+#: petition.module:276
+msgid "Choose the fields you want to include in the exportable reports. You might not want the author to be able to export all the collected fields (ie the petitioner's email address) in order to protect the petitioners' privacy "
+msgstr ""
+
+#: petition.module:281
+msgid "included fields"
+msgstr ""
+
+#: petition.module:290
+msgid "Petition emails"
+msgstr ""
+
+#: petition.module:297
+msgid "Petition email for regular update on the amount of signatures"
+msgstr ""
+
+#: petition.module:306;331
+msgid "Email subject to maintainer"
+msgstr ""
+
+#: petition.module:308
+msgid "Customized email subject to a petition author to tell them how many signatures the petition has reached."
+msgstr ""
+
+#: petition.module:314;339
+msgid "Email message to maintainer"
+msgstr ""
+
+#: petition.module:316
+msgid "Customized email body to a petition author to tell them how many signatures the petition has reached."
+msgstr ""
+
+#: petition.module:322
+msgid "Petition email announcing the end of the campaign"
+msgstr ""
+
+#: petition.module:333;341
+msgid "Customized email subject to a petition author to inform them the petition campaign is over."
+msgstr ""
+
+#: petition.module:348
+msgid "Other settings"
+msgstr ""
+
+#: petition.module:355
+msgid "Number of signatures displayed per page"
+msgstr ""
+
+#: petition.module:374;401
+msgid "View"
+msgstr ""
+
+#: petition.module:375;402
+msgid "Operations"
+msgstr ""
+
+#: petition.module:382;409;144
+msgid "Signatures"
+msgstr ""
+
+#: petition.module:383;410
+msgid "Result"
+msgstr ""
+
+#: petition.module:384;411
+msgid "Edit"
+msgstr ""
+
+#: petition.module:385;412
+msgid "Clear"
+msgstr ""
+
+#: petition.module:390;113
+msgid "Petition list"
+msgstr ""
+
+#: petition.module:417;431
+msgid "My petitions"
+msgstr ""
+
+#: petition.module:428
+msgid "My Petitions"
+msgstr ""
+
+#: petition.module:429
+msgid "View and edit my petitions"
+msgstr ""
+
+#: petition.module:454
+msgid "Translation of the body and the subject of the confirmation email"
+msgstr ""
+
+#: petition.module:470
+msgid "Original email subject"
+msgstr ""
+
+#: petition.module:471
+msgid "The subject of the confirmation email sent to the petitioner in "
+msgstr ""
+
+#: petition.module:479
+msgid "Translation of the email subject"
+msgstr ""
+
+#: petition.module:480
+msgid "Translation of the subject of the email sent to the petitioner."
+msgstr ""
+
+#: petition.module:494
+msgid "Original email body"
+msgstr ""
+
+#: petition.module:495
+msgid "The body of the confirmation email sent to the petitioner in "
+msgstr ""
+
+#: petition.module:504
+msgid "Translation of the email body"
+msgstr ""
+
+#: petition.module:505
+msgid "Translation of the body of the email sent to the petitioner."
+msgstr ""
+
+#: petition.module:526
+msgid "Petition settings"
+msgstr ""
+
+#: petition.module:536
+msgid "Geographic settings for this petition"
+msgstr ""
+
+#: petition.module:558
+msgid "Geographic restriction"
+msgstr ""
+
+#: petition.module:559
+msgid "If checked, you will be abe to restrict the geographic area where this petition can be signed"
+msgstr ""
+
+#: petition.module:568
+msgid "List of allowed countries if any"
+msgstr ""
+
+#: petition.module:586
+msgid "Geographic location"
+msgstr ""
+
+#: petition.module:587
+msgid "Choose in which countries this petition can be signed."
+msgstr ""
+
+#: petition.module:601
+msgid "Advanced petition settings"
+msgstr ""
+
+#: petition.module:610
+msgid "Author's email"
+msgstr ""
+
+#: petition.module:611
+msgid "Enter the email where you wish to receive regular updates concerning the amount of signatures on your petition. If no email address is entered, the emails will be sent to your account's email"
+msgstr ""
+
+#: petition.module:618
+msgid "Email alert frequency"
+msgstr ""
+
+#: petition.module:619
+msgid "Enter the frequency with wich you wish to receive email alerts"
+msgstr ""
+
+#: petition.module:633
+msgid "Customized subject of the mail sent to the petitioner"
+msgstr ""
+
+#: petition.module:634
+msgid "Customized email subject to the petitioner."
+msgstr ""
+
+#: petition.module:647
+msgid "Customized body of the email sent to the signer"
+msgstr ""
+
+#: petition.module:648
+msgid "Customized email body to the petitioner."
+msgstr ""
+
+#: petition.module:667
+msgid "Signature fields"
+msgstr ""
+
+#: petition.module:682
+msgid "Signature required fields"
+msgstr ""
+
+#: petition.module:704
+msgid "Fields displayed in the signature overview"
+msgstr ""
+
+#: petition.module:723
+msgid "Display mode"
+msgstr ""
+
+#: petition.module:731
+msgid "Activate / inactivate the signature form"
+msgstr ""
+
+#: petition.module:740
+msgid "Activate the signature form"
+msgstr ""
+
+#: petition.module:742
+msgid "Uncheck this box if you want to inactivate the signature form to stop people from signing this petition"
+msgstr ""
+
+#: petition.module:755
+msgid "Inactivation message"
+msgstr ""
+
+#: petition.module:756
+msgid "Customized message to be displayed instead of the signature form to inform that the petition can no longer be signed. You can decide to empty it"
+msgstr ""
+
+#: petition.module:763
+msgid "Campaign settings"
+msgstr ""
+
+#: petition.module:771
+msgid "Limit Date"
+msgstr ""
+
+#: petition.module:772
+msgid "Format: %time. Enter the date until the petition campaign should be running."
+msgstr ""
+
+#: petition.module:779
+msgid "signature goal"
+msgstr ""
+
+#: petition.module:780
+msgid "Enter the aimed amount of signatures to reach for this petition campaign"
+msgstr ""
+
+#: petition.module:787
+msgid "none"
+msgstr ""
+
+#: petition.module:787
+msgid "time based"
+msgstr ""
+
+#: petition.module:787
+msgid "goal based"
+msgstr ""
+
+#: petition.module:788
+msgid "campaign settings"
+msgstr ""
+
+#: petition.module:789
+msgid "Tell on which criteria the campaign should be set (time based vs goal based) - choose none if you want to have a petition running for ever. If you choose a campign mode, you will be informed per email when the campaign is over."
+msgstr ""
+
+#: petition.module:795
+msgid "Automatically inactivate the signature form"
+msgstr ""
+
+#: petition.module:797
+msgid "Check this box if you want the petition form to be automatically inactivated when the campaign is over. Enter the message you want to display instead of the form then in the above section"
+msgstr ""
+
+#: petition.module:806
+msgid "manually collected signatures"
+msgstr ""
+
+#: petition.module:814
+msgid "Manually Collected Signatures"
+msgstr ""
+
+#: petition.module:815
+msgid "<p>You can enter manually collected signatures to have them display with the electronically collected signatures. </p><p>Enter one signature per line with the following structure: </p>\r\n                        <p>'name'; 'firstname'; 'self-description'; 'address'; 'zip-code'; 'town'; 'country_code2'; 'phone'; 'email address'; 'canbe_informed'; 'language' </p>\r\n                        <p>example: </p>\r\n                        <p>Van den Brugh; Peter; ; Parisstraat 23; 5676; Antwerpen; NL; ; Peter456@hotmail.be; 0; nl </p>\r\n                        <p>Please note each field is separated with a semi-colon ';'. There is no semi colon afte ther last field of the line i.e the language! \r\n                        Leave a blank between semi-colons if the field is empty.</p>\r\n                        "
+msgstr ""
+
+#: petition.module:840
+msgid "Teaser"
+msgstr ""
+
+#: petition.module:841
+msgid "Short presentation of what your petition is about. This presentation can be displayed as a teaser"
+msgstr ""
+
+#: petition.module:851
+msgid "Body"
+msgstr ""
+
+#: petition.module:969
+msgid "Manual signature !signature_string could not be saved. check the structure."
+msgstr ""
+
+#: petition.module:995
+msgid "Manual signature for !signature_name successfully entered in position !signature_position"
+msgstr ""
+
+#: petition.module:1001
+msgid "There now are !signature_count for this petition"
+msgstr ""
+
+#: petition.module:1050
+msgid "The update frequency must be a number"
+msgstr ""
+
+#: petition.module:1054
+msgid "Please, use a valid email . "
+msgstr ""
+
+#: petition.module:1054
+msgid " your current mail  is: "
+msgstr ""
+
+#: petition.module:1058
+msgid "Please, do not forget to place the @link in your email body"
+msgstr ""
+
+#: petition.module:1063
+msgid "The signature goal must be a number - campaign settings"
+msgstr ""
+
+#: petition.module:1068
+msgid "You have to specify a valid limit date - campaign settings"
+msgstr ""
+
+#: petition.module:1129;1158
+msgid "You are not allowed to sign this petition"
+msgstr ""
+
+#: petition.module:1181
+msgid "Petition module - Signature Form"
+msgstr ""
+
+#: petition.module:1200;1415
+msgid "Sign the petition!"
+msgstr ""
+
+#: petition.module:1257 signaturedisplay.module:101;140;199
+msgid "Signatures for the petition : "
+msgstr ""
+
+#: petition.module:1261 signaturedisplay.module:224
+msgid " "
+msgstr ""
+
+#: petition.module:1315 signaturedisplay.module:116
+msgid "There are no signatures for this petition"
+msgstr ""
+
+#: petition.module:1451
+msgid "address"
+msgstr ""
+
+#: petition.module:1460
+msgid "ZIP Code"
+msgstr ""
+
+#: petition.module:1516
+msgid "Phone"
+msgstr ""
+
+#: petition.module:1526
+msgid "Be kept informed of the campaign"
+msgstr ""
+
+#: petition.module:1527
+msgid "Check this box if you wish to receive updates about this petition campaign"
+msgstr ""
+
+#: petition.module:1553
+msgid "Sign it!"
+msgstr ""
+
+#: petition.module:1573
+msgid "More than 5 signatures have been entered from your IP address and none of them have been confirmed. Please confirm the other signatures first"
+msgstr ""
+
+#: petition.module:1583
+msgid "The IP address from which you signed this petition does not correspond to the country where you are claiming to live in. Please, check. If the error persists, please contact the site administrator."
+msgstr ""
+
+#: petition.module:1596
+msgid "The IP address from which you are signing this petition corresponds to a country where the petition does not apply. We unfortunately cannot accept your signature."
+msgstr ""
+
+#: petition.module:1601
+msgid "The IP address from which you are signing this petition does not correspond to any known country. Please contact the site administrator ."
+msgstr ""
+
+#: petition.module:1606
+msgid "Please, use a valid email "
+msgstr ""
+
+#: petition.module:1606
+msgid ". Your current address is:"
+msgstr ""
+
+#: petition.module:1616
+msgid "Someone using the same email address has already signed the petition. You may not sign twice this petition"
+msgstr ""
+
+#: petition.module:1676
+msgid "Thank you for signing the petition. An email has been sent to you. Please click on the enclosed link within 3 days in order to confirm your signature"
+msgstr ""
+
+#: petition.module:1744
+msgid "Your signature has been confirmed. Thank you for signing the petition."
+msgstr ""
+
+#: petition.module:1757
+msgid "Confirmation"
+msgstr ""
+
+#: petition.module:1760
+msgid "Please, confirm you want to delete all the signatures before clicking on submit"
+msgstr ""
+
+#: petition.module:1769
+msgid "Delete all the signatures!"
+msgstr ""
+
+#: petition.module:1779
+msgid "Please, check the box to confirm you want to delete all the signatures"
+msgstr ""
+
+#: petition.module:1787
+msgid "All the signatures have been removed."
+msgstr ""
+
+#: petition.module:1853
+msgid "Please confirm your signature for the petition '@petitiontitle'."
+msgstr ""
+
+#: petition.module:1856
+msgid "Thank you for supporting the petition @petitiontitle with your signature. Please confirm your signature by clicking on the following link within the 3 days you have received this email:\n\n   @link \n\nOnce you have confirmed your signature, your IP address will be erased from the database, which will guarantee your privacy."
+msgstr ""
+
+#: petition.module:1859
+msgid "Your petition @petitiontitle : @number signatures gathered so far"
+msgstr ""
+
+#: petition.module:1862
+msgid "Dear @maintainer, \n\n Your petition @petitiontitle online on @site has gathered @number signatures so far. \n\n Best regards, \n\n @site 's team"
+msgstr ""
+
+#: petition.module:1865
+msgid "Your petition @petitiontitle : the campaign is over"
+msgstr ""
+
+#: petition.module:1868
+msgid "Dear @maintainer, \n\nYour petition @petitiontitle online on @site has gathered @number signatures.\nThe campaign is considered over according the criteria you chose. If you have chosen to have the petition form automatically inactivated, the petition is now closed. You can however change these settings manually.\n\n Best regards, \n\n @site 's team "
+msgstr ""
+
+#: petition.module:1871
+msgid " You can use the placeholders '@petitiontitle' for the petition title, '@firstname' for the petitioner's firstname, '@name' for the petitioner's name, '@link' for the confirmation link (If you do not include the link, the petitioner will be unable to confirm his signature) and '@site' for the site"
+msgstr ""
+
+#: petition.module:1874
+msgid " You can use the placeholders \"@petitiontitle\" for the petition title, \"@number\" for the number of signatures, \"@maintainer\" for the petition author, \"@site\" for the site"
+msgstr ""
+
+#: petition.module:1038;1574;0 petition.install:290;304 petition.info:0;0 signaturedisplay.info:0
+msgid "petition"
+msgstr ""
+
+#: petition.module:1038
+msgid "Petition !node->title updated"
+msgstr ""
+
+#: petition.module:1574
+msgid "Suspicion of spam attempt from IP address: !remote_addr"
+msgstr ""
+
+#: petition.module:1080
+msgid "1 signature"
+msgid_plural "@count signatures"
+msgstr[0] ""
+msgstr[1] ""
+
+#: petition.module:62
+msgid "sign petitions"
+msgstr ""
+
+#: petition.module:62
+msgid "create petitions"
+msgstr ""
+
+#: petition.module:62
+msgid "edit own petitions"
+msgstr ""
+
+#: petition.module:62
+msgid "edit petitions"
+msgstr ""
+
+#: petition.module:62
+msgid "administer petition"
+msgstr ""
+
+#: petition.module:62
+msgid "administer own petition"
+msgstr ""
+
+#: petition.module:62
+msgid "clear petition results"
+msgstr ""
+
+#: petition.module:62
+msgid "view signatures"
+msgstr ""
+
+#: petition.module:103
+msgid "Petition List"
+msgstr ""
+
+#: petition.module:124
+msgid "Petition Settings"
+msgstr ""
+
+#: petition.module:135
+msgid "signature confirmation"
+msgstr ""
+
+#: petition.module:155
+msgid "Download results"
+msgstr ""
+
+#: petition.module:166
+msgid "Clear signatures"
+msgstr ""
+
+#: petition.module:177
+msgid "Administer Signatures"
+msgstr ""
+
+#: signaturedisplay.module:20
+msgid "Only Displays the Names in the signature order - Not sortable. Not choosable fields"
+msgstr ""
+
+#: signaturedisplay.module:26
+msgid "Alphabetical Order - Not sortable. Not choosable fields"
+msgstr ""
+
+#: signaturedisplay.module:32
+msgid "Alphabetical Order - sortable table"
+msgstr ""
+
+#: signaturedisplay.module:174;278
+msgid "There are no petitioners whose name start with "
+msgstr ""
+
+#: signaturedisplay.module:0
+msgid "signaturedisplay"
+msgstr ""
+
+#: petition.install:15
+msgid "Table for storing additional properties for petition nodes."
+msgstr ""
+
+#: petition.install:18
+msgid "The node identifier of a petition"
+msgstr ""
+
+#: petition.install:25
+msgid "Enable the Checking a country entered against the country infered from the ipadress"
+msgstr ""
+
+#: petition.install:31
+msgid "Enable geographic restrictions in the petitions"
+msgstr ""
+
+#: petition.install:37
+msgid "Authorized countries for the petition"
+msgstr ""
+
+#: petition.install:42
+msgid "Email address to receive results"
+msgstr ""
+
+#: petition.install:47
+msgid "Frequency to receive emails"
+msgstr ""
+
+#: petition.install:53
+msgid "Optional fields for the petition"
+msgstr ""
+
+#: petition.install:58
+msgid "Required fields for the petition"
+msgstr ""
+
+#: petition.install:63
+msgid "Customized email subject to the signer"
+msgstr ""
+
+#: petition.install:68
+msgid "Customized email body to the signer"
+msgstr ""
+
+#: petition.install:73
+msgid "Result fields to show"
+msgstr ""
+
+#: petition.install:78;314;340
+msgid "The display mode of the signatures"
+msgstr ""
+
+#: petition.install:83;320
+msgid "The number of signatures to the petition"
+msgstr ""
+
+#: petition.install:89;345
+msgid "Whether the signature form is activated or not"
+msgstr ""
+
+#: petition.install:95;351
+msgid "The message displayed instead of the signature form if inactive"
+msgstr ""
+
+#: petition.install:100;363
+msgid "Unix timetstamp of the limit date for the campaign setting"
+msgstr ""
+
+#: petition.install:106;369
+msgid "Signature goal for the campaign setting"
+msgstr ""
+
+#: petition.install:112;376
+msgid "campaign mode"
+msgstr ""
+
+#: petition.install:118;382
+msgid "auto inactivation mode"
+msgstr ""
+
+#: petition.install:130
+msgid "Table for storing the signatures."
+msgstr ""
+
+#: petition.install:133
+msgid "The node identifier of a petition signature"
+msgstr ""
+
+#: petition.install:140
+msgid "The signature identifier of a petition signature"
+msgstr ""
+
+#: petition.install:147
+msgid "The name in the signature"
+msgstr ""
+
+#: petition.install:152
+msgid "The firstname in the signature"
+msgstr ""
+
+#: petition.install:157
+msgid "The description in the signature"
+msgstr ""
+
+#: petition.install:162
+msgid "The address in the signature"
+msgstr ""
+
+#: petition.install:167
+msgid "The zip code in the signature"
+msgstr ""
+
+#: petition.install:172
+msgid "The town in the signature"
+msgstr ""
+
+#: petition.install:177
+msgid "The country in the signature"
+msgstr ""
+
+#: petition.install:182
+msgid "The tel in the signature"
+msgstr ""
+
+#: petition.install:187
+msgid "The email in the signature"
+msgstr ""
+
+#: petition.install:192
+msgid "The remote address in the signature. Transformed into country code upon confirmation"
+msgstr ""
+
+#: petition.install:197
+msgid "The date of the signature"
+msgstr ""
+
+#: petition.install:202
+msgid "The hash for the confirmation"
+msgstr ""
+
+#: petition.install:207
+msgid "Whether the signature is confirmed or not"
+msgstr ""
+
+#: petition.install:214;326
+msgid "The position of a signature within a given petition"
+msgstr ""
+
+#: petition.install:221;389
+msgid "Whether the petitioner accepts to be informed aout the petition campaign"
+msgstr ""
+
+#: petition.install:228;397
+msgid "The language of the signed petition"
+msgstr ""
+
+#: petition.install:237;404
+msgid "Table for storing the translations of email subjects and body."
+msgstr ""
+
+#: petition.install:240;407
+msgid "The node identifier of the translation"
+msgstr ""
+
+#: petition.install:247;414
+msgid "The node identifier of original version"
+msgstr ""
+
+#: petition.install:254;421
+msgid "The language code of the translation"
+msgstr ""
+
+#: petition.install:259;426
+msgid "The translated subject"
+msgstr ""
+
+#: petition.install:264;431
+msgid "The translated body"
+msgstr ""
+
+#: petition.install:290
+msgid "Removing petition module."
+msgstr ""
+
+#: petition.install:304
+msgid "Petition module removed"
+msgstr ""
+
+#: petition.info:0
+msgid "enable to create and administer online petitions. Extended usablity if installed together with the IP to country  and the countries_api modules"
+msgstr ""
+
+#: signaturedisplay.info:0
+msgid "signature display"
+msgstr ""
+
+#: signaturedisplay.info:0
+msgid "provides extra ways of displaying the signatures. Programmers can write similar modules to provide more ways of displaying signatures."
+msgstr ""
+

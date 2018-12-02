@@ -1,0 +1,4 @@
+Translate Contact Form 6.x-1.x-dev 2009-03-25
+---------------------------------------------
+
+Initial development release.

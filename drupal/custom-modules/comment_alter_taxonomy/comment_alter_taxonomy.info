@@ -1,0 +1,14 @@
+; $Id: comment_alter_taxonomy.info,v 1.3 2009/01/26 18:31:01 damz Exp $
+name = Comment alter taxonomy
+description = Allow users to alter the taxonomy terms of a node from a comment on that node.
+dependencies[] = taxonomy
+dependencies[] = comment
+package = Taxonomy
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-08-24
+version = "6.x-1.0"
+core = "6.x"
+project = "comment_alter_taxonomy"
+datestamp = "1282663906"
+

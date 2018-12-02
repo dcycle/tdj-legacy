@@ -1,0 +1,6 @@
+; $Id: pathfilter.info,v 1.1.2.2.2.1 2008/02/19 19:56:53 jbrown Exp $
+
+name = Server Resize Filter
+version= 100a105
+description = "Makes small changes to your html so that images are resized on the server rather than on your computer. This makes a big difference with large images: instead of large images being piped through your computer, the resized one is so that less bandwidth is used, make the user experience faster."
+core = 6.x

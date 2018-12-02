@@ -1,0 +1,38 @@
+<?php
+// $Id$
+
+/*
+  I used customdestination.module as a basis to design this file. It contains database information to set up on install and get rid of on uninstall. 
+*/
+
+function translate_contact_form_schema() {
+  $schema['translate_contact_form'] = array(
+    'description' => t('Table which stores additional contact form description in other languages.'),
+    'fields' => array(
+      'language' => array(
+        'description' => t('The two-letter language code for this translation.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''),
+      'text' => array(
+        'description' => t('The actual translated text to display.'),
+        'type' => 'varchar',
+        'length' => 1024,
+        'not null' => TRUE,
+        'default' => ''),
+      ),
+    'primary key' => array('language'),
+  );
+  return $schema;
+}
+
+function translate_contact_form_install() {
+  // Create my tables.
+  drupal_install_schema('translate_contact_form');
+}
+
+function translate_contact_form_uninstall() {
+  // Drop my tables.
+  drupal_uninstall_schema('translate_contact_form');
+}

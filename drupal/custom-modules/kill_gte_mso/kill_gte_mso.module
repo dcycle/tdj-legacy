@@ -1,0 +1,97 @@
+<?php
+
+function kill_gte_mso_filter_tips($delta, $format, $long = FALSE) {
+  switch ($delta) {
+    case 0:
+      if ($long) {
+        return t('This filter attempts to get rid of bizarre if gte mso code that gets inserted when pasting from Microsoft Word into FCK Editor.');
+      }
+      else {
+        return t('Gets rid of extra Microsoft code');
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function kill_gte_mso_filter($op, $delta = 0, $format = -1, $text = '') {
+
+	$theInputText = $text;
+	$theOperation = $op;
+		// can be list, description, prepare, process, settings
+	$theFilter = $delta;
+
+  // The "list" operation provides the module an opportunity to declare both how
+  // many filters it defines and a human-readable name for each filter. Note that
+  // the returned name should be passed through t() for translation.
+  if ($theOperation == 'list') {
+    return array(0 => t('Gets rid of extra Microsoft code'));
+  }
+
+  // All operations besides "list" provide a $delta argument so we know which
+  // filter they refer to.
+  switch ($delta) {
+    case 0:
+      switch ($theOperation) {
+        // This description is shown in the administrative interface, unlike the
+        // filter tips which are shown in the content editing interface.
+        case 'description':
+          return t('Gets rid of extra Microsoft code.');
+
+        // We don't need the "prepare" operation for this filter, but it's required
+        // to at least return the input text as-is.
+        case 'prepare':
+          return $theInputText;
+
+        // The actual filtering is performed here. The supplied text should be
+        // returned, once any necessary substitutions have taken place.
+        case 'process':
+			// see http://drupal.org/files/issues/mail2web.patch
+			
+			/*+	// Bizarro unescaped XML engine code:
+			+	// Now we get rid of bizarre code inside mso/<xml> tags, 
+			+	// which Outlook puts in to accompany each embedded image, and
+			+	// which once again has exposed text that end up in the post.  Thanks, Bill!
+			+	// <!--[if gte mso 9]><xml>
+			+	//  <o:OLEObject Type="Embed" ProgID="Photoshop.Image.8" ShapeID="_x0000_i1027" 
+			+	//   DrawAspect="Content" ObjectID="_1234038827">
+			+	//   <o:WordFieldCodes>\s</o:WordFieldCodes>      <<<< the \s shows up in the post!!!!  
+			+	//  </o:OLEObject>
+			+	// </xml><![endif]-->
+			+	// This stuff is SO ridiculous we are just going to remove it entirely!
+			*/
+//			$r = preg_replace('/<!--\[if gte mso[^\[]*\[endif\]-->/', '',$theInputText);
+			
+//		  	die($theInputText);
+			
+			$r = preg_replace('/&lt;!--\[if gte mso[^\[]*\[endif\]-->/', '',$theInputText);
+			$r = preg_replace('/&lt;!--{[0-9]*}-->/', '',$r);
+
+			$r = str_replace('&lt;!--StartFragment-->', '',$r);
+			$r = str_replace('&lt;!--EndFragment-->', '',$r);
+
+			$r = str_replace('&lt;!--[', '',$r);
+			$r = str_replace('&lt;![', '',$r);
+			
+			for($i=0;$i<10;$i++) {
+			  $r = preg_replace('/<br \/>[ \t\r]*<\/p>/','</p>',$r);
+			  $r = preg_replace('/<br \/>[ \s]*<\/p>/','</p>',$r);
+			}
+			$r = preg_replace('/<br \/>\s*<meta/','<meta',$r);
+			
+			$r = preg_replace('/<br \/>\r<meta/','<meta',$r);
+//die($r);
+			
+			return $r;
+		//	return preg_replace('/<!--\[if gte mso.*?\]>.*?<xml>.*?<\/xml>.*?<!\[endif\]-->/i','', $theInputText);
+
+
+        // Filter settings for pathfilter.
+        case 'settings':
+          // return _pathfilter_settings();
+      }
+      break;
+  }
+}

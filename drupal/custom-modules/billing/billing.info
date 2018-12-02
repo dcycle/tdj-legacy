@@ -1,0 +1,6 @@
+; $Id
+
+name = "Billing"
+description = Access and manage your credits, monthly and yearly payments. 
+core = 6.x
+package = "Simpladmin"

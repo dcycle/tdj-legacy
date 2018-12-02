@@ -1,0 +1,11 @@
+; $Id: multisite_api.info,v 1.1.4.1 2008/11/04 18:54:12 dalin Exp $
+name = Multisite API
+description = A collection of common functions useful for administering multisites.  You don't need to install this unless required by another module.
+package = multisite
+core=6.x
+; Information added by drupal.org packaging script on 2009-06-06
+version = "6.x-1.0"
+core = "6.x"
+project = "multisite_api"
+datestamp = "1244298972"
+

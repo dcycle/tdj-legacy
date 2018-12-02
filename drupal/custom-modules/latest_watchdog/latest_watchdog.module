@@ -1,0 +1,25 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * TODO: Enter file description here.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function latest_watchdog_menu() { 
+  // This is the minimum information you can provide for a menu item.
+  $items['latest_watchdog'] = array(
+    'title' => 'latest_watchdog',
+    'page callback' => 'latest_watchdog_page',
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+function latest_watchdog_page() {
+  die(db_result(db_query('select timestamp from {watchdog} order by timestamp desc limit 1')));
+}

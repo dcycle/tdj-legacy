@@ -1,0 +1,18 @@
+<?php
+// $Id: queue_mail.module,v 1.2.2.1 2008/10/27 16:17:59 kbahey Exp $
+
+/**
+ * Email sending function, called from job queue, or as a fallback.
+ */
+function queue_mail_send($message = array()) {
+  $mimeheaders = array();
+  foreach ($message['headers'] as $name => $value) {
+    $mimeheaders[] = $name .': '. mime_header_encode($value);
+  }
+  return mail(
+    $message['to'],
+    mime_header_encode($message['subject']),
+    str_replace("\r", '', $message['body']),
+    join("\n", $mimeheaders)
+  );
+}

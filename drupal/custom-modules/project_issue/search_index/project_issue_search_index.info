@@ -1,0 +1,14 @@
+name = Project issue search index
+description = "Index <strong>only</strong> the content of project issue nodes using the core search index. <strong>Most sites should NOT enable this module.</strong> See the included README.txt for more."
+dependencies[] = search
+dependencies[] = project_issue
+package = Project
+core = "6.x"
+
+
+; Information added by drupal.org packaging script on 2011-09-25
+version = "6.x-1.0-alpha5"
+core = "6.x"
+project = "project_issue"
+datestamp = "1316932018"
+

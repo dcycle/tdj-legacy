@@ -1,0 +1,562 @@
+<?php
+// $Id: mt.module,v 1.5.2.1.2.1 2008/02/19 19:56:53 jbrown Exp $
+
+// modifs:
+/*
+
+
+	081202213740 100a102: don't provide a second page script. All will be on the same script. a second page script is interesting if, for example, your first page is a block.
+	081202213739 100a101: maintenance -- set file to utf8
+	081202213738 100a101: catch an exception from the external freshray.
+*/
+
+$freshray_authorized = true;
+
+require_once("fastform/fastform.php");
+require_once("./freshray/simpladmin/modules/backend.i.php");
+require_once("./freshray/ui_spexception_.f.php");
+
+
+function mtfilter_process_text($aText)
+{
+	$theText = $aText;
+
+	while($theInstance = mtfilter_get_mt_tag_instance_in_text($theText))
+	{
+		$theText = $theInstance->Process();
+	}
+	
+	return $theText;
+}
+
+function mtfilter_get_mt_tag_instance_in_text($aText)
+{	
+	$theText = $aText;
+	static $theNumTimesCalled;
+	
+	$theNumTimesCalled++;
+	
+	if($theNumTimesCalled > 100) return;
+
+	// must find here {mediatribe_acepted_tag ...} ...
+	
+	$theMatchesArray = array();
+	
+	$theExpression = "/{([a-z_]*)[^}]*}/";
+	
+//	die(preg_match($theExpression, '<p>&nbsp;{latest id=&quot;2&quot;}</p>', $theMatchesArray));
+
+	if(!preg_match($theExpression, $theText, $theMatchesArray))
+	{
+		return;
+	}
+
+	$theTagName = $theMatchesArray[1];
+	$theTagString = $theMatchesArray[0];
+
+//	echo($theTagName.' '.$theTagString.'<br/>');
+	
+	if(!$theTagObject = mtfilter_new_tag_from_name($theTagName))
+	{	
+		return; // there is a tag but we don't know it.
+	}
+	
+	$theTagObject->Init($aText, $theTagString);
+	
+	return $theTagObject;
+}
+
+function mtfilter_new_tag_from_name($aTagName)
+{
+	$theTagName = $aTagName;
+	$theTagName = strtolower($theTagName);
+	
+	switch($theTagName)
+	{
+		case "sitemodel":
+			return new SiteModel;
+		case "youtube":
+			return new YouTube;
+		case "googlevideo":
+			return new GoogleVideo;
+		case "latest":
+		case "dernieres":
+			return new Latest;
+		case "paypal":
+			return new PayPalTag;
+		case "simpladmin":
+			return new SimpladminTag;
+		case "form":
+		case "fff":
+		case "formulaire":
+		case "fastform":
+			return new FormTag;
+		default:
+			return false;
+	}
+	
+}
+
+class PayPalTag extends Tag
+{
+	function _Process_()
+	{
+		$thePrice = $this->GetAttribute(array("prix", "price"));		
+		$theName = $this->GetAttribute(array("name", "nom"));		
+		$theReturnUrl = "http://initialdrupal.freshray.info/site/node/30";
+
+		$theBusiness = variable_get('site_mail', '');
+		
+		$theReturn = "<form action=\"https://www.paypal.com/cgi-bin/webscr\" method=\"post\"><input type=\"hidden\" name=\"cmd\" value=\"_xclick\"><input type=\"hidden\" name=\"business\" value=\"$theBusiness\"><input id=\"PPD0B\" type=\"hidden\" name=\"item_name\" value=\"$theName\"><input id=\"PP0B\" type=\"hidden\" name=\"amount\" value=\"$thePrice\"><input type=\"hidden\" name=\"no_shipping\" value=\"2\"><input type=\"hidden\" name=\"return\" value=\"$theReturnUrl\"><input type=\"hidden\" name=\"no_note\" value=\"1\"><input type=\"hidden\" name=\"currency_code\" value=\"CAD\">                                <input type=\"hidden\" name=\"lc\" value=\"CA\"><input type=\"hidden\" name=\"bn\" value=\"PP-BuyNowBF\"><input type=\"image\" src=\"https://www.paypal.com/en_US/i/btn/btn_buynowCC_LG.gif\" border=\"0\" name=\"submit\" alt=\"Faites votre paiement avec PayPal\"><img alt=\"\" border=\"0\" src=\"https://www.paypal.com/en_US/i/scr/pixel.gif\" width=\"1\" height=\"1\"></form>	";
+		
+		return $theReturn;
+	}
+}
+
+class SiteModel extends Tag
+{
+	function _Process_()
+	{
+	
+		return "no longer used, please use the qumbia site generator glue module instead".
+	
+		// must return a WIZARD
+		
+			// make sure included files know we're authorized. We had a problem with this because $authorized is defined in TXindex.php, but the file sitecreatorwiz.i.php does not recognize that $authorized is defined. Perhaps this has to do with scope? In any event, it would be nice for security purposes to have a better handle on how all this works. 
+		$authorized = true;
+		
+			// this is some tacos stuff we use.
+		require_once("./freshray/fr.utilities.i.php");
+		require_once("./freshray/fr.sitecreatorwiz.i.php");
+		
+			// create a new Site Creation Wizard. The Wizard object then takes care of everything including determining which page to show, different forms, validation, etc. If you want to change anything in the presentation of this page, this wizard is where to do it. The argument is the script for the second page of the wizard (the first page having other stuff on it, which don't appear on the first page).
+
+		try {
+
+			if($_GET['key']) {
+				$theWizard = sitecreatorwiz_get_new_emailconf_wizard($_GET['key'], $_GET['email']);
+			} else {
+				$theWizard = sitecreatorwiz_get_new_wizard();
+			}
+
+			
+				// Note that theWizard is a colloection of forms. The wizard object manages forms (which one is current, what page the user is at, etc.). In this context, the form is just some html which can be displayed (it is not an object)
+			$theForm = $theWizard->GetCurrentForm();
+			
+			return $theForm;
+		} catch(Exception $e) {
+			$r = "Désolé, une erreur s'est produite. Le département technique a été avisé. --- Sorry, an error occured. Technical staff has been advised";
+			
+			drupal_mail('mtfilter', 'exception', "albert.albala@gmail.com", 'en', array('exception' => $e));
+			
+			return $r;
+		}
+	}
+}
+
+function mtfilter_mail($key, &$message, $params) {
+
+	switch($key) {
+		case 'exception':
+			$theException = $params['exception'];
+			$theExceptionMessage = $theException->getMessage();
+			$theTraceMessage = $theException->getTraceAsString();
+			$message['subject'] = "An exception has occured within MTFILTER module";
+			$message['body'] = "An exception has occured within MTFILTER module. You might already have received this message through the exception builing mechanism. The message is " . $theExceptionMessage . '; the trace is ' . $theTraceMessage;
+		break;
+	}
+}
+
+
+class YouTube extends Tag
+{
+	function _Process_()
+	{
+		$theId = $this->GetAttribute(array("id"));		
+		// die('mtfiter youtube');
+		$theReturn = '<object width="425" height="355"><param name="movie" value="http://www.youtube.com/v/'.$theId.'&hl=en"></param><param name="wmode" value="transparent"></param><embed src="http://www.youtube.com/v/' . $theId . '&hl=en" type="application/x-shockwave-flash" wmode="transparent" width="425" height="355"></embed><!--v2--></object>';
+		
+		return $theReturn;
+	}
+}
+
+class GoogleVideo extends Tag
+{
+	function _Process_()
+	{
+		$theId = $this->GetAttribute(array("id"));		
+
+		$theReturn = '<embed id="VideoPlayback" style="width:400px;height:326px" flashvars="" src="http://video.google.com/googleplayer.swf?docid='.$theId.'&hl=en" type="application/x-shockwave-flash"> </embed>';
+		
+		return $theReturn;
+	}
+}
+
+class Latest extends Tag
+{
+	function _Process_()
+	{
+		$theId = $this->GetAttribute("id");		
+		$theShowTitle = $this->GetAttribute("showtitle");		
+		$theShowMore = $this->GetAttribute("showmore");		
+		$theCount = $this->GetAttribute("count");		
+
+		switch($theShowTitle) {
+			case 'false':
+				$myShowTitle = false;
+				break;
+			case 'true':
+			default:
+				$myShowTitle = true;
+				break;
+		}
+
+		switch($theShowMore) {
+			case 'false':
+				$myShowMore = false;
+				break;
+			case 'true':
+			default:
+				$myShowMore = true;
+				break;
+		}
+
+		// return "***$theId***";
+
+		if(!$theId) return 'error -- you must specify an id -- erreur -- vous devez spcifier un id';
+
+		/**
+		
+		080304202008 title does not appear if there is no post.
+		080303152502 only content of the current locale appears now
+		080303143334 update: found a way to get the current language at http://drupal.org/node/208047
+		080303143333 looked everywhere for a way to get the current locale, but it is impossible -- we'll have to just make this english. But we still included a way to make it easy to change -- just change theLocale var at the very beginning.
+		080303143332 added a way to have a relevant more link
+		080303143331 added a way to make optional show date
+		080303143330 changed the initial vars to suit my needs
+		080303143329 taken from http://drupal.org/node/44854
+		
+		*/
+		
+		$myRelativeURLPrefix = "";
+		$myMoreLink = "taxonomy/term/$theId"; // note that locale will automatically be added later
+		$myShowMoreInfo = false; // mediatribe.
+		$myTitle['fr'] = "Mon blogue";
+		$myTitle['en'] = "My Blog";
+		
+		$taxo_id_arr = array($theId);
+		$taxo_id = join($taxo_id_arr, ',');
+		$list_no = 5;
+		
+		/* don't modify anything under here unless you know what you are doing */
+		
+		global $language;
+		$theLocale = $language->language;
+		
+		$myMoreLink = $myRelativeURLPrefix."/".$theLocale."/".$myMoreLink;
+		
+		$theLocalized["more"]["en"] = "more";
+		$theLocalized["more"]["fr"] = "plus";
+		
+		/*$query = "SELECT DISTINCT n.nid, n.title, n.created
+		  FROM {node} n
+		  INNER JOIN {term_node} tn ON n.nid = tn.nid
+		  WHERE tn.tid IN ($taxo_id) AND n.status = 1
+		  ORDER BY n.created DESC
+		  LIMIT $list_no";*/
+		  
+		  //mediatribe get also language
+		
+		$query = "SELECT DISTINCT n.nid, n.title, n.created, n.language
+		  FROM {node} n
+		  INNER JOIN {term_node} tn ON n.nid = tn.nid
+		  WHERE tn.tid IN ($taxo_id) AND n.status = 1
+		  ORDER BY n.created DESC
+		  LIMIT $list_no";
+		
+		$sql = db_rewrite_sql($query);
+		$result = db_query($sql);
+		$items = array();
+		
+		while ($anode = db_fetch_object($result)) {
+		
+			// mediatribe continue if not of the current locale
+			
+			if($anode->language != $theLocale) continue;
+		
+		  $term_names = array();
+		  # gather, into $term_names, all the terms because of which this node was selected:
+		  foreach (taxonomy_node_get_terms($anode->nid) as $term) {
+			 if (in_array($term->tid, $taxos_id_arr))
+				 $term_names[] = $term->name;
+		  }
+		
+		//  $items[]= l($anode->title, "node/$anode->nid").
+		//   '<br /> (Category/ies: ' . join($term_names, ', ') .
+		//    ' - date added ' . format_date($anode->created, 'custom', 'd-m-Y') . ')';
+		
+		// mediatribe replaced the above by the following to make more info optional
+		
+			$theMoreInfo = $myShowMoreInfo?'<br /> (Category/ies: ' . join($term_names, ', ') .' - date added ' . format_date($anode->created, 'custom', 'd-m-Y') . ')':'';
+		
+			$items[] = l($anode->title, "node/$anode->nid").$theMoreInfo;
+		
+		}
+		
+		if(count($items)) {
+		
+			if($myShowTitle)
+			{
+				$r .= "<h2 class=\"title\">" . $theShowTitle . $myTitle[$theLocale]."</h2>";
+			}
+		
+		  $r .= theme('item_list',$items); 
+		  
+		  if($myShowMore) {
+		  
+		  $r .= '<div class="more-link">[<a href="'.$myMoreLink.'">'.$theShowMore . '**' . $theLocalized["more"][$theLocale].'</a>]</div>'; }
+		  
+		  
+		}
+		
+		if(!$r) $r .= "no posts for ";
+
+		
+		return $r;
+
+
+// comma separated lists of terms tid to display nodes
+$terms = $theId;
+
+// the number of nodes to show
+$count = $theCount?$theCount:10;
+
+
+$sql = "SELECT n.title, n.nid FROM {node} n INNER JOIN {term_node} tn ON n.nid = tn.nid WHERE tn.tid in ($terms) AND n.status=1 ORDER BY n.created DESC";
+$result = db_query_range(db_rewrite_sql($sql), 0, $count);
+//if (db_num_rows($result)) {
+ return node_title_list($result);
+//}
+return t('No nodes available.');
+
+
+
+		// see http://drupal.org/node/44854
+		// comma separated lists of terms tid to display nodes
+	
+			// set the node type
+		$node_type = 'story';
+			// set the vocab ID
+		$vocab_id = $theId;
+			// limit results
+		$limit = 10;
+			// use db_rewrite_sql for api compliance
+
+		$r .= "these are stories related to item $theId";
+
+ 		$sql = db_rewrite_sql("
+			 SELECT n.nid, n.title, n.sticky, n.created FROM {node} n
+			 INNER JOIN {term_node} t ON n.nid = t.nid
+			 INNER JOIN {term_data} td ON t.tid = td.tid
+			 WHERE td.vid = %d
+			 AND n.type = '%s'
+			 AND n.status = 1
+			 ORDER BY n.created DESC
+			 ");
+		$sql = db_query_range($sql, $vocab_id, $node_type,0, $limit);
+		
+		while ($result = db_fetch_object($sql)) {
+ 
+ 			$r .= 'at least sth was found (item '.$i++.')';
+ 
+ 			$items[] = l($result->title, 'node/'.$result->nid); 
+ 		}
+
+		if(!$i) $r.='nothing found';
+
+		// use proper theme function
+		$r .= theme('item_list', $items);
+ 
+ 		return $r;
+	}
+}
+
+class SimpladminTag extends Tag
+{
+	function _Process_()
+	{
+
+		/*static $callsat;
+
+		$callsat .= ", xcalled at ".time();//." from ".spexception_trace();
+*/
+try{
+	// create a new Backend instance. The new object then takes care of everything including determining which page to show, user login, timeout, etc. It is a sort of simple online OS. 
+		$theOSInstance = backend_new_instance();
+
+	// the backend instance will now determine, based on things such as sessions, get and put vars, etc, which page to show (it can be an inner page of a module or a login page, for example).
+		$theHtml = $theOSInstance->GetHtmlToShow();
+		
+} catch(Exception $e)
+{
+				//	spexception_notify_tech($e);
+				
+				ui_spexception_f_display_error($e);
+				
+					$theHtml = "<div style=\"color:white;text-align:center;font-family:sans-serif;font-weight:bold;background-color:red;margin:15px;padding:15px;\">";
+					$theHtml .= "_FR_SORRY_ERROR_OCCURED_TECH_SUPPORT_NOTIFIED";
+					$theHtml .= "</div>";
+}
+		return $theHtml;
+	}
+}
+
+abstract class Tag
+{
+	public function Init($aText, $aActualString)
+	{
+		$this->itsText = $aText;
+		$this->itsActualString = $aActualString;
+	}
+	
+	public function Process()
+	{
+		if($itsError)
+		{	
+			return $itsError."--".$this->$itsText;
+		}
+
+		$theActualString = $this->itsActualString;
+		$theProcessedString = $this->_Process_();
+		$theText = $this->itsText;
+		
+		$theReturn = str_replace($this->itsActualString, $theProcessedString, $this->itsText);
+		
+		return $theReturn;
+	}
+	
+	public function GetAttribute($aAttributeOrArray)
+	{
+		$theText = $this->itsText;
+	
+		if(!is_array($aAttributeOrArray))
+		{
+			$aAttributeOrArray = array($aAttributeOrArray);
+		}
+		
+		$TRACE .= "looking for (".implode(',',$aAttributeOrArray).")";		
+		$theAttributeArray = $aAttributeOrArray;
+		$theString = str_replace("&quot;", "\"", $this->itsActualString);
+		
+		foreach($theAttributeArray as $theAttributeName)
+		{
+			// note that we are returning only one single value with this function; we will return the first we encouter
+			
+			$theMatchesArray = array();
+		
+			$theExpression = "/$theAttributeName=\"*([^\"]*)\"/";
+	
+			if(!preg_match($theExpression, $theString, $theMatchesArray))
+			{
+				$TRACE .= " / The exression ((((($theExpression))))) containing ((((($theAttributeName))))) was not found in ((((($theString)))))";		
+			
+				continue;
+			}
+			
+			//return '((((('.implode(')))))(((((',$theMatchesArray).')))))';
+			
+			//$TRACE .= " / The exression ($theExpression) containing ($theAttributeName) was found ($theText). The resulting array is (".implode(",",$theMatchesArray).")";		
+			
+
+			$theTagValue = $theMatchesArray[1];
+			
+			return $theTagValue;
+		}
+
+	}
+	
+	abstract public function _Process_();
+}
+
+/**
+ * Implementation of hook_filter_tips().
+ */
+function mtfilter_filter_tips($delta, $format, $long = FALSE) {
+  switch ($delta) {
+    case 0:
+      if ($long) {
+        return t('mtfilter');
+      }
+      else {
+        return t('mtfilter');
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function mtfilter_filter($op, $delta = 0, $format = -1, $text = '') {
+
+	$theInputText = $text;
+	$theOperation = $op;
+		// can be list, description, prepare, process, settings
+	$theFilter = $delta;
+
+  // The "list" operation provides the module an opportunity to declare both how
+  // many filters it defines and a human-readable name for each filter. Note that
+  // the returned name should be passed through t() for translation.
+  if ($theOperation == 'list') {
+    return array(0 => t('mt filter'));
+  }
+
+  // All operations besides "list" provide a $delta argument so we know which
+  // filter they refer to.
+  switch ($delta) {
+    case 0:
+      switch ($theOperation) {
+        // This description is shown in the administrative interface, unlike the
+        // filter tips which are shown in the content editing interface.
+        case 'description':
+          return t('mtfilter.');
+
+        // We don't need the "prepare" operation for this filter, but it's required
+        // to at least return the input text as-is.
+        case 'prepare':
+          return $theInputText;
+
+        // The actual filtering is performed here. The supplied text should be
+        // returned, once any necessary substitutions have taken place.
+        case 'process':
+			return mtfilter_process_text($theInputText);
+
+
+        // Filter settings for pathfilter.
+        case 'settings':
+          return _pathfilter_settings();
+      }
+      break;
+  }
+}
+
+/**
+ * Helper settings function for hook_filter('settings').
+ */
+function _pathfilter_settings() {
+  $form = array();
+  $form['pathfilter'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Internal path filter'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => FALSE,
+  );
+  $form['pathfilter']['pathfilter_link_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Convert internal paths to'),
+    '#options' => array('absolute' => t('Absolute links'), 'relative' => t('Relative links')),
+    '#default_value' => variable_get('pathfilter_link_type', 'absolute'),
+    '#description' => t('Should internal paths be transformed to absolute URLs, such as %absolute or relative paths, like %relative. Note that your changes may not appear until the cache has been cleared.', array('%absolute' => 'http://www.example.com/my-page', '%relative' => '/my-page')),
+  );
+  return $form;
+}

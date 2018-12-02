@@ -1,0 +1,58 @@
+/* $Id$ */
+
+/* In case Javascript is disabled */
+
+.view-tdj-frontpageanimation li {
+  float: left;
+}
+
+.view-tdj-frontpageanimation {
+  height: 180px;
+  width: 620px;
+  overflow: hidden;
+}
+
+.view-tdj-frontpageanimation li {
+  background: none;
+}
+
+.view-tdj-frontpageanimation li,
+.view-tdj-frontpageanimation ul,
+.view-tdj-frontpageanimation ul.jcarousel-view--tdj-frontpageanimation--block-1 {
+  padding: 0;
+  margin: 0;
+}
+
+.view-tdj-frontpageanimation li {
+  margin-right: 10px;
+}
+
+.view-tdj-frontpageanimation ul.jcarousel-view--tdj-frontpageanimation--block-1 li .views-field-nothing {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 95%;
+  background: url(images/gradual_bg_dark.png) repeat-x top center;
+  padding: 10px 5px 5px 5px;
+}
+
+.view-tdj-frontpageanimation ul.jcarousel-view--tdj-frontpageanimation--block-1 li .views-field-nothing, 
+.view-tdj-frontpageanimation ul.jcarousel-view--tdj-frontpageanimation--block-1 li .views-field-nothing a {
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.view-tdj-frontpageanimation ul.jcarousel-view--tdj-frontpageanimation--block-1 li {
+  position: relative;
+  height: 180px;
+  width: 200px !important;
+}
+
+.view-tdj-frontpageanimation ul.jcarousel-view--tdj-frontpageanimation--block-1 li .views-field-nothing a {
+  font-size: 1.3em;
+  text-shadow: 0 3px 3px black;
+}
+
+/* With javascript */
+

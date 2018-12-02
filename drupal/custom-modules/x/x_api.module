@@ -1,0 +1,134 @@
+<?php
+/* $Id$ */
+
+function x_api_get_exception_list() {
+  $r = new Cx_api_exception_list;
+  
+  return $r;
+}
+
+function x_api_exception_to_line($aException) {
+  if(!$aException instanceof Exception) {
+    throw new Exception('object passed (' . serialize($aException) . ') is not an object of type Exception');
+  }
+
+  $q = 'INSERT INTO {x_api} (`id`, `e`, `more`) VALUES (NULL , \'%s\', \'' . mysql_real_escape_string(serialize(array('date' => time()))) . '\');';
+  
+  db_query($q, serialize($aException));
+  
+  $theId = db_last_insert_id('{x_api}', 'id');
+
+  try {
+    $theSavedException = x_api_id_to_exception($theId, true); 
+  } catch(Exception $e) {
+    throw new Exception("There seems to be a problem with the database: trying to serialize $aException (" . serialize($aException) . ") and entering it into the database, we can no longer retrieve a valid serialized item. " . $e->getMessage);
+  }
+  
+  $r = x_api_exception_number_to_exception_object($theId);
+  
+  return $r;
+}
+
+function x_api_exception_number_to_exception_object($aExceptionNumber) {
+  if(!$aExceptionNumber) {
+    throw new Exception("($aExceptionNumber) is an invlalid exception id");
+  }
+
+  $r = new Cx_api_exception_line($aExceptionNumber);
+  
+  return $r;
+}
+
+function x_api_id_to_attribute($aId, $aAttr) {
+  $q = 'SELECT * FROM {x_api} where `id` = \'' . $aId . '\';';
+  
+  $theResult = db_query($q);
+  
+  while($theObj = db_fetch_object($theResult)) {
+    $theSerializedException = $theObj->more;
+    
+    $theA = unserialize($theSerializedException);
+    
+    $r = $theA[$aAttr];
+  }
+  
+  return $r;
+}
+
+function x_api_valid_id($aId) {
+  return x_api_id_to_exception($aId);
+}
+
+function x_api_id_to_exception($aId, $aMustBeValidF = false) {
+  $q = 'SELECT * FROM {x_api} where `id` = \'' . $aId . '\';';
+  
+  $theResult = db_query($q);
+  
+  while($theObj = db_fetch_object($theResult)) {
+    $theSerializedException = $theObj->e;
+    
+    $r = unserialize($theSerializedException);
+  }
+  
+  if($aMustBeValidF && !$r) {
+    throw new Exception("the id ($aId) cannot be mapped to valid Exception. The Serialized is (" . htmlentities($theSerializedException) . ") and the unserilized is ($r)");
+  }
+  
+  return $r;
+}
+
+class Cx_api_exception_list {
+  private $itsResult;
+  
+  public function __construct() {
+    $q = 'SELECT * FROM {x_api};';
+  
+    $this->itsResult = db_query($q);
+  }
+
+  public function GetNext() {
+    if($theLineAsObject = db_fetch_object($itsResult)) {
+      $r = x_api_exception_number_to_exception_object($theLineAsObject->id);
+    }
+    
+    return $r;
+  }
+}
+
+class Cx_api_exception_line {
+  private $itsId;
+  
+  public function __construct($aId) {
+    $this->itsId = $aId;
+  }
+  
+  public function GetException() {
+    $theId = $this->GetId();
+    
+    $r = x_api_id_to_exception($theId, true);
+    
+    return $r;
+  }
+
+  public function GetDate() {
+    $theId = $this->GetId();
+    
+    $r = x_api_id_to_attribute($theId, 'date');
+    
+    return $r;
+  }
+
+  public function GetTeaser() {
+    $theException = $this->GetException();
+    
+    $r = $theException->getMessage();
+    
+    return $r;
+  }
+
+  public function GetId() {
+    $r = $this->itsId;
+    
+    return $r;
+  }
+}

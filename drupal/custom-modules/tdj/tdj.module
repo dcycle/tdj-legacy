@@ -1,0 +1,16 @@
+<?php
+
+// see http://stackoverflow.com/questions/3070576/collapse-taxonomy-fieldset-on-node-form-by-default
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function tdj_form_alter(&$form, &$form_state, $form_id) {
+  // TODO: Adjust the form id according to your content type
+  if ($form_id == 'story_node_form') {
+    // Collapse 'Vocabularies' fieldset.
+    $form['taxonomy']['#collapsed'] = TRUE;
+    $form['revision_information']['#collapsed'] = TRUE;
+  }
+}
+

@@ -1,0 +1,5 @@
+<?
+
+function qumbia_footer_uninstall() {
+  variable_del('qumbia_footer_block_co_name');
+}

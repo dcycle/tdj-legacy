@@ -1,0 +1,230 @@
+# Hungarian translation of css_injector (6.x-1.3)
+# Copyright (c) 2008 by the Hungarian translation team
+# Generated from files:
+#  css_injector.admin.inc,v 1.1.2.6 2008/08/10 01:56:58 add1sun
+#  css_injector.module,v 1.1.2.4 2008/08/10 01:56:58 add1sun
+#  css_injector.info,v 1.1.2.2 2008/08/10 01:56:58 add1sun
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: css_injector (6.x-1.3)\n"
+"POT-Creation-Date: 2008-11-19 08:20-0600\n"
+"PO-Revision-Date: 2008-11-10 07:08-0600\n"
+"Language-Team: Hungarian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+#: css_injector.admin.inc:191
+msgid "Delete"
+msgstr "Törlés"
+
+#: css_injector.admin.inc:245,245
+msgid "Delete"
+msgstr "Törlés"
+
+#: css_injector.admin.inc:246
+msgid "Cancel"
+msgstr "Mégsem"
+
+#: css_injector.admin.inc:55
+msgid "Title"
+msgstr "Cím"
+
+#: css_injector.admin.inc:124,124
+msgid "Title"
+msgstr "Cím"
+
+#: css_injector.admin.inc:184
+msgid "Save"
+msgstr "Mentés"
+
+#: css_injector.admin.inc:244
+msgid "This action cannot be undone."
+msgstr "Ez a művelet nem visszavonható."
+
+#: css_injector.admin.inc:147
+msgid ""
+"Enter one page per line as Drupal paths. The '*' character is a "
+"wildcard. Example paths are %blog for the blog page and %blog-wildcard "
+"for every personal blog. %front is the front page."
+msgstr ""
+"Soronként egy Drupal elérési útvonalat kell megadni. A „*” "
+"használható speciális helyettesítőként. Példák: „%blog” a "
+"blogok főoldalához és „%blog-wildcard” a személyes blogok "
+"főoldalaihoz. „%front” a címlapot jelenti."
+
+#: css_injector.admin.inc:151
+msgid ""
+"If the PHP-mode is chosen, enter PHP code between %php. Note that "
+"executing incorrect PHP-code can break your Drupal site."
+msgstr ""
+"Ha a PHP-mód lett kiválasztva, a PHP kód megadható %php "
+"jelölések között. Hibásan megadott PHP kód "
+"működésképtelenné teheti a webhelyet!"
+
+#: css_injector.admin.inc:161
+msgid "Pages"
+msgstr "Oldalak"
+
+#: css_injector.admin.inc:171
+msgid "All"
+msgstr "Minden"
+
+#: css_injector.admin.inc:242
+msgid "Are you sure you want to delete %title?"
+msgstr "„%title” biztosan törölhető?"
+
+#: css_injector.admin.inc:55
+msgid "Actions"
+msgstr "Műveletek"
+
+#: css_injector.admin.inc:16
+msgid "Edit rule"
+msgstr "Szabály szerkesztése"
+
+#: css_injector.admin.inc:23
+msgid "Delete rule"
+msgstr "Szabály törlése"
+
+#: css_injector.admin.inc:169
+msgid "Media"
+msgstr "Média"
+
+#: css_injector.admin.inc:55
+msgid "File path"
+msgstr "Fájl elérési út"
+
+#: css_injector.admin.inc:170
+msgid ""
+msgstr ""
+
+#: css_injector.admin.inc:178,178
+msgid ""
+msgstr ""
+
+#: css_injector.admin.inc:68
+msgid "Create a new rule"
+msgstr "Új szabály létrehozása"
+
+#: css_injector.admin.inc:72
+msgid "No CSS injection rules have been set up yet. !url."
+msgstr "Nincs még egyetlen CSS injektor szabály sem. !url."
+
+#: css_injector.admin.inc:78
+msgid "!url."
+msgstr "!url."
+
+#: css_injector.admin.inc:131
+msgid "CSS code"
+msgstr "CSS kód"
+
+#: css_injector.admin.inc:146
+msgid "Add on every page except the listed pages."
+msgstr "A felsorolt oldalak kivételével mindenütt adja hozzá."
+
+#: css_injector.admin.inc:146
+msgid "Add on only the listed pages."
+msgstr "Csak a felsorolt oldalakon adja hozzá."
+
+#: css_injector.admin.inc:150
+msgid ""
+"Add if the following PHP code returns <code>TRUE</code> (PHP-mode, "
+"experts only)."
+msgstr ""
+"Hozzáadás, ha az alábbi PHP kód (<code>TRUE</code>) értékkel "
+"tér vissza (PHP mód, csak haladóknak)."
+
+#: css_injector.admin.inc:155
+msgid "Add the CSS on specific pages"
+msgstr "CSS hozzáadása bizonyos oldalakhoz"
+
+#: css_injector.admin.inc:171
+msgid "Screen"
+msgstr "Képernyő"
+
+#: css_injector.admin.inc:171
+msgid "Print"
+msgstr "Nyomtatás"
+
+#: css_injector.admin.inc:177
+msgid "Preprocess CSS"
+msgstr "CSS előfeldolgozás"
+
+#: css_injector.module:18
+msgid ""
+"Allows administrators to inject CSS into the page output based on "
+"configurable rules."
+msgstr ""
+"Lehetővé teszi CSS hozzáadását az oldal kimenetéhez a megadott "
+"szabályok alapján."
+
+#: css_injector.module:21
+msgid ""
+"Use CSS injection rules to add small snippets of CSS to the page "
+"output when specific criteria are met. For example, a simple rule "
+"could change the page background color at night or float a particular "
+"div to the right on node editing pages."
+msgstr ""
+"CSS injektor szabályokkal az oldal megjelenését lehet módosítani "
+"apró CSS kódrészletekkel. Például, egyszrerű szabály "
+"készíthető amely az oldal háttérét a napszakhoz igazítja vagy "
+"eltolja jobbra az oldal egy elemét a kiválasztott oldalakon."
+
+#: css_injector.module:22
+msgid ""
+"An important point to keep in mind is that in Drupal, themes always "
+"get last crack at display. Theme CSS is applied after modules. That "
+"means themes can and will override CSS put into play by CSS Injector "
+"module. If you want to override CSS that a theme is already applying, "
+"use CSS rules the way they were intended -- higher specificity rules, "
+"or the !important flag."
+msgstr ""
+"Fontos tudni, hogy a Drupal sminkeknek van a végső beleszólásuk az "
+"oldalak megjelenítésébe. Ez azt jelenti, hogy a sminkek "
+"felülírhatják a CSS injektor szabályt. A sminkek által használt "
+"CSS szabály, csak felsőbbrendű szabállyal írható felül a "
+"<em>CSS injektor</em> modulban (például a pontosabb szelektor, vagy "
+"az !important jelző használatával)."
+
+#: css_injector.module:99
+msgid "administer css injection"
+msgstr "css injekció adminisztrációja"
+
+#: css_injector.module:49
+msgid "CSS injector"
+msgstr "CSS injektor"
+
+#: css_injector.module:50
+msgid "Add CSS to the page output based on configurable rules."
+msgstr ""
+"CSS hozzáadása az oldal megjelenítéshez a megadott szabályok "
+"alapján"
+
+#: css_injector.module:57
+msgid "Edit CSS injector rule"
+msgstr "CSS injektor szabály szerkesztése"
+
+#: css_injector.module:65
+msgid "Add CSS injector rule"
+msgstr "CSS injektor szabály létrehozása"
+
+#: css_injector.module:73
+msgid "Delete CSS injector rule"
+msgstr "CSS injektor szabály törlése"
+
+#: css_injector.module:0
+msgid "css_injector"
+msgstr "css_injector"
+
+#: css_injector.info:0
+msgid "CSS Injector"
+msgstr "CSS injektor"
+
+#: css_injector.info:0
+msgid "Adds CSS to the page output based on configurable rules."
+msgstr ""
+"CSS hozzáadása az oldal megjelenítéshez a megadott szabályok "
+"alapján."
+

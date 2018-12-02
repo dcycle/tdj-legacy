@@ -1,0 +1,157 @@
+<?php
+
+/**
+ * @file
+ * Implements the API through which Google Analytics data can be accessed.
+ */
+
+/* Number of seconds in a day. */
+define('GOOGLE_ANALYTICS_REPORTS_DAY', 60 * 60 * 24);
+
+/* Number of seconds in a week. */
+define('GOOGLE_ANALYTICS_REPORTS_WEEK', GOOGLE_ANALYTICS_REPORTS_DAY * 7);
+
+/**
+ * Implementation of hook_menu().
+ */
+function google_analytics_api_menu() {
+
+  $items['admin/settings/google-analytics-reports'] = array(
+    'title' => 'Google Analytics Reports settings',
+    'description' => 'Configure your account, profiles, and reports.',
+    'page callback' => 'drupal_get_form',
+    'file' => 'google_analytics_api.pages.inc',
+    'page arguments' => array('google_analytics_api_admin'),
+    'access arguments' => array('administer google analytics api settings'),
+  );
+
+  /* OAuth callback from Google */
+  $items['google-analytics-reports/oauth'] = array(
+    'title' => 'Google Analytics Reports OAuth Callback',
+    'access callback' => TRUE,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('google_analytics_reports_oauth_callback'),
+    'type' => MENU_CALLBACK,
+    'file' => 'google_analytics_api.pages.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function google_analytics_api_perm() {
+  return array('administer google analytics api settings');
+}
+
+/**
+ * Implements hook_theme().
+ */
+function google_analytics_api_theme() {
+  return array(
+    'google_analytics_api_profile_label' => array(
+      'arguments' => array('profile' => NULL),
+    ),
+  );
+}
+
+
+/**
+ * Instantiate a new GAFeed object.
+ */
+function google_analytics_api_new_gafeed() {
+  module_load_include('inc', 'google_analytics_api', 'GAFeed.lib');
+  $key = variable_get('google_analytics_reports_consumer_key', 'anonymous');
+  $secret = variable_get('google_analytics_reports_consumer_secret', 'anonymous');
+  $oauth_token = variable_get('google_analytics_reports_oauth_token', NULL);
+  $oauth_token_secret = variable_get('google_analytics_reports_oauth_token_secret', NULL);
+  return new GAFeed($key, $secret, $oauth_token, $oauth_token_secret);
+}
+
+/**
+ * Request account data.
+ *
+ * @param $params
+ *   An associative array containing:
+ *   - start-index: optional [default=1]
+ *   - max-results: optional [default=20]
+ * @param $cache_options
+ *   An optional associative array containing:
+ *   - cid: optional [default=md5 hash]
+ *   - expire: optional [default=CACHE_TEMPORARY]
+ *   - refresh: optional [default=FALSE]
+ */
+ function google_analytics_api_account_data($params = array(), $cache_options = array()) {
+  $GAFeed = google_analytics_api_new_gafeed();
+  $GAFeed->queryAccountFeed($params, $cache_options);
+  return $GAFeed;
+}
+
+/**
+ * Request report data.
+ *
+ * @param $params
+ *   An associative array containing:
+ *   - profile_id: required [default=variable_get('google_analytics_reports_profile_id')]
+ *   - metrics: required.
+ *   - dimensions: optional [default=none]
+ *   - sort_metric: optional [default=none]
+ *   - filter: optional [default=none]
+ *   - segment: optional [default=none]
+ *   - start_date: optional [default=GA release date]
+ *   - end_date: optional [default=today]
+ *   - start_index: optional [default=1]
+ *   - max_results: optional [default=10,000]
+ * @param $cache_options
+ *   An optional associative array containing:
+ *   - cid: optional [default=md5 hash]
+ *   - expire: optional [default=CACHE_TEMPORARY]
+ *   - refresh: optional [default=FALSE]
+ */
+function google_analytics_api_report_data($params = array(), $cache_options = array()) {
+
+  $params_defaults = array(
+    'profile_id' => 'ga:' . variable_get('google_analytics_reports_profile_id', 0),
+  );
+  
+  $params += $params_defaults;
+
+  $GAFeed = google_analytics_api_new_gafeed();
+  $GAFeed->queryReportFeed($params, $cache_options);
+
+  return $GAFeed;
+}
+
+/*
+ * Programatically revoke token.
+ */
+function google_analytics_api_revoke() {
+  $GAFeed = google_analytics_api_new_gafeed();        
+  $GAFeed->revokeToken();
+  variable_del('google_analytics_reports_profile_id');
+  variable_del('google_analytics_reports_consumer_key');
+  variable_del('google_analytics_reports_consumer_secret');
+  variable_del('google_analytics_reports_oauth_token');
+  variable_del('google_analytics_reports_oauth_token_secret');
+  variable_del('google_analytics_reports_cache_length');
+}
+
+/**
+ * Sets the expiry timestamp for cached queries.
+ *
+ * Default is 3 days.
+ *
+ * @return The UNIX timestamp to expire the query at.
+ */
+function google_analytics_reports_cache_time() {
+  return time() + variable_get('google_analytics_reports_cache_length', 259200);
+}
+
+/**
+ * Theme the full string label of profiles.
+ *
+ * @return Themed string label.
+ */
+function theme_google_analytics_api_profile_label($profile) {
+  return $profile['accountName'] . ' (' . $profile['title'] . ' - ' . $profile['webPropertyId'] . ')';
+}

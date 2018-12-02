@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<mosinstall version="1.0.0" type="mambot" group="content">
+	<name>fastformcreator</name>
+	<author>Mediatribe.net</author>
+	<creationDate>November 2007</creationDate>
+	<copyright>(C) 2007 Mediatribe.net. All rights reserved.</copyright>
+	<license>http://www.gnu.org/copyleft/gpl.html GNU/GPL</license>
+	<authorEmail>fastformcreator@mediatribe.net</authorEmail>
+	<authorUrl>www.mediatribe.net</authorUrl>
+	<version>1.0.0a101</version>
+	<versionPhase>under_development</versionPhase>
+	<versionHistory>
+		071203000003 1.0.0a101 started
+		071203000002 1.0.0a100 final
+		071203000001 installed on ultramart website
+		071203000000 minimally functioning version
+		071201000000 1.0.0a100 started
+	</versionHistory>
+	<description>In any content item, simply add {fastform TYPE NAME (VALUE) (VALIDATORS)} and you have just entered a fully functional field which will allow you to collect data from users. The data is sent to you by email. There is no database integration. For more information and complete documentation, see the file fastformcreator.php (if you have access to it through FTP) which accompanies this XML.</description>
+	<files>
+		<filename mambot="fastformcreator">fastformcreator.php</filename>
+		<filename mambot="fastformcreator">fastformcreator.xml</filename>
+		<filename mambot="fastformcreator">fastformcreator_commands.php</filename>
+		<filename mambot="fastformcreator">fastformcreator_core.php</filename>
+		<filename mambot="fastformcreator">fastformcreator_Form.php</filename>
+		<filename mambot="fastformcreator">fastformcreator_php4.php</filename>
+		<filename mambot="fastformcreator">fastformcreator_php5.php</filename>
+		<filename mambot="fastformcreator">fastformcreator_utilities.php</filename>
+		<filename mambot="fastformcreator">fastformcreator_validators.php</filename>
+	</files>
+</mosinstall>

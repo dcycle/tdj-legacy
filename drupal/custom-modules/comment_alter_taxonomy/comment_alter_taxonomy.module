@@ -1,0 +1,775 @@
+<?php
+// $Id: comment_alter_taxonomy.module,v 1.17 2009/03/24 00:39:32 dww Exp $
+
+/**
+ * @file
+ * Allows users with proper permissions to alter the taxonomy of a
+ * parent node from inside of a comment.
+ */
+
+/**
+ * Implementation of hook_perm().
+ */
+function comment_alter_taxonomy_perm() {
+  $perms = array();
+  $types = node_get_types();
+  foreach ($types as $type) {
+    $name = check_plain($type->type);
+    $perms[] = "alter taxonomy on $name content";
+  }
+  return $perms;
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function comment_alter_taxonomy_menu($may_cache = TRUE) {
+  $items['admin/settings/comment_alter_taxonomy'] = array(
+    'title' => 'Comment alter taxonomy',
+    'description' => 'Enable/disable vocabularies that users may alter from their comments.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('comment_alter_taxonomy_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+  );
+  $legacy = variable_get('comment_alter_taxonomy_legacy_issue_paths', FALSE);
+  if (module_exists('project_issue') && !empty($legacy)) {
+    $items['project/issues/%/term/%'] = array(
+      'title' => 'Issues for a project with a given term',
+      'page callback' => 'comment_alter_taxonomy_legacy_project_issue_redirect',
+      'page arguments' => array(4, 2),
+      'access arguments' => array('access content'),
+      'file' => 'comment_alter_taxonomy_legacy_pages.inc',
+    );
+    $items['project/issues-term/%'] = array(
+      'title' => 'Issues with a given term',
+      'page callback' => 'comment_alter_taxonomy_legacy_project_issue_redirect',
+      'page arguments' => array(2),
+      'access arguments' => array('access content'),
+      'file' => 'comment_alter_taxonomy_legacy_pages.inc',
+    );
+  }
+  return $items;
+}
+
+/**
+ * Administration settings form.
+ */
+function comment_alter_taxonomy_admin_settings() {
+  $options = array();
+
+  // Get a list of all vocabularies in the system.
+  $vocabularies = taxonomy_get_vocabularies();
+  foreach ($vocabularies as $vid => $vocabulary) {
+    $options[$vid] = check_plain($vocabulary->name);
+  }
+
+  $form['comment_alter_taxonomy_vocabularies'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Vocabularies that may be altered'),
+    '#options' => $options,
+    '#default_value' => array_filter(variable_get('comment_alter_taxonomy_vocabularies', array())),
+  );
+
+  if (module_exists('project_issue')) {
+    $form['project_issue'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Project issue support'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    );
+    $form['project_issue']['comment_alter_taxonomy_legacy_issue_paths'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Provide support for legacy project issue taxonomy listing paths'),
+      '#default_value' => variable_get('comment_alter_taxonomy_legacy_issue_paths', FALSE),
+    );
+    $form['#submit'][] = 'comment_alter_taxonomy_settings_submit';
+  }
+
+  return system_settings_form($form);
+}
+
+function comment_alter_taxonomy_settings_submit($form, $form_state) {
+  $current_value = variable_get('comment_alter_taxonomy_legacy_issue_paths', 'FALSE');
+  $form_value = $form_state['values']['comment_alter_taxonomy_legacy_issue_paths'];
+  if ($current_value != $form_value) {
+    // If the setting changed, record that and force a menu rebuild to ensure
+    // we have the right menu items defined based on the setting.
+    variable_set('comment_alter_taxonomy_legacy_issue_paths', $form_value);
+    menu_rebuild();
+  }
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function comment_alter_taxonomy_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'comment_admin_overview') {
+    // {comment_alter_taxonomy} may need to be updated if any comments are edited/deleted.
+    $form['#submit'][] = 'comment_alter_taxonomy_comment_mass_update';
+  }
+  elseif (isset($form['type']['#value']) && $form['type']['#value'] .'_node_form' == $form_id && isset($form['nid']['#value'])) {
+    // Prevent user from changing the terms for any vocabulary that can be altered from a comment with this
+    // module.
+    if (isset($form['taxonomy'])) {
+      $alterable_vids = array_keys(comment_alter_taxonomy_get_alterable_vocabularies($form['type']['#value']));
+      foreach ($alterable_vids as $vid) {
+        if (isset($form['taxonomy'][$vid])) {
+          unset($form['taxonomy'][$vid]);
+        }
+        elseif (isset($form['taxonomy']['tags'][$vid])) {
+          unset($form['taxonomy']['tags'][$vid]);
+        }
+      }
+    }
+  }
+  elseif ($form_id == 'comment_form' && empty($form['cid']['#value'])) {
+    comment_alter_taxonomy_comment_form($form);
+  }
+}
+
+function comment_alter_taxonomy_comment_form(&$form) {
+  // Prepare some variables for later checking.
+  $node = node_load($form['nid']['#value']);
+  $access = user_access("alter taxonomy on ". check_plain($node->type) ." content");
+
+  $vocabularies = taxonomy_get_vocabularies($node->type);
+  $allowed = $access ? comment_alter_taxonomy_get_alterable_vocabularies($node->type) : array();
+
+  // We need to store the current taxonomy terms assigned to the node so that later,
+  // after form submission, we can add those terms that are currently assigned to the node but
+  // which the user is not given permission to alter in the comment back to the node.
+  // This is necessary because taxonomy_node_save() first deletes all terms on a node
+  // and then adds back those terms from the edit of the node.
+  foreach ($vocabularies as $vid => $vocabulary) {
+    _comment_alter_taxonomy_vocabulary_form($vocabulary, $node, $form, !isset($allowed[$vid]));
+  }
+
+  // Add fieldset only if form has more than 1 element.
+  if (count($allowed) > 1) {
+    $form['taxonomy'] += array(
+      '#type' => 'fieldset',
+      '#title' => t('Categories'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+    );
+  }
+  $form['taxonomy']['#weight'] = -3;
+  $form['taxonomy']['#tree'] = TRUE;
+}
+
+/**
+ * Generate taxonomy form for a given vocabulary.
+ *
+ * This is kind of nasty; mostly a copy/paste of taxonomy_form_alter, which is
+ * a big glop of stuff.
+ *
+ * @param $vocabulary
+ *   A vocabulary object.
+ * @param $node
+ *   A node object.
+ * @param $form
+ *   The form array onto which the vocabulary widget should be placed.
+ * @param $disabled
+ *   Whether or not this widget should be disabled, for example if the user
+ *   does not have the permission to alter terms for this vocabulary.
+ */
+function _comment_alter_taxonomy_vocabulary_form($vocabulary, $node, &$form, $disabled = FALSE) {
+  // Determine existing term assignments, if any.
+  if (!isset($node->taxonomy)) {
+    if ($node->nid) {
+      $terms = taxonomy_node_get_terms($node);
+    }
+    else {
+      $terms = array();
+    }
+  }
+  else {
+    $terms = $node->taxonomy;
+  }
+
+  if ($vocabulary->tags) {
+    // Handle free-tagging vocabularies.
+    $typed_terms = array();
+    foreach ($terms as $term) {
+      // Extract terms belonging to the vocabulary in question.
+      if ($term->vid == $vocabulary->vid) {
+
+        // Commas and quotes in terms are special cases, so encode 'em.
+        if (strpos($term->name, ',') !== FALSE || strpos($term->name, '"') !== FALSE) {
+          $term->name = '"'. str_replace('"', '""', $term->name) .'"';
+        }
+
+        $typed_terms[] = $term->name;
+      }
+    }
+    $typed_string = implode(', ', $typed_terms) . (array_key_exists('tags', $terms) ? $terms['tags'][$vocabulary->vid] : NULL);
+
+    if ($vocabulary->help) {
+      $help = $vocabulary->help;
+    }
+    else {
+      $help = t('A comma-separated list of terms describing this content. Example: funny, bungee jumping, "Company, Inc.".');
+    }
+
+    $form['taxonomy']['tags'][$vocabulary->vid] = array(
+      '#type' => 'textfield',
+      '#title' => $vocabulary->name,
+      '#description' => $help,
+      '#required' => $vocabulary->required,
+      '#default_value' => $typed_string,
+      '#autocomplete_path' => 'taxonomy/autocomplete/'. $vocabulary->vid,
+      '#weight' => $vocabulary->weight,
+      '#maxlength' => 255,
+      '#tree' => TRUE,
+    );
+    if ($disabled) {
+      _comment_alter_taxonomy_disable_element($form['taxonomy']['tags'][$vocabulary->vid]);
+    }
+  }
+  else {
+    // Extract terms belonging to the vocabulary in question.
+    $default_terms = array();
+    foreach ($terms as $term) {
+      if ($term->vid == $vocabulary->vid) {
+        $default_terms[$term->tid] = $term;
+      }
+    }
+    $form['taxonomy'][$vocabulary->vid] = taxonomy_form($vocabulary->vid, array_keys($default_terms), $vocabulary->help);
+    if ($disabled) {
+      _comment_alter_taxonomy_disable_element($form['taxonomy'][$vocabulary->vid]);
+    }
+    $form['taxonomy'][$vocabulary->vid]['#weight'] = $vocabulary->weight;
+    $form['taxonomy'][$vocabulary->vid]['#required'] = $vocabulary->required;
+    $form['taxonomy'][$vocabulary->vid]['#tree'] = TRUE;
+  }
+}
+
+/**
+ * Recursively disable a form tree, transforming input element in value callbacks.
+ */
+function _comment_alter_taxonomy_disable_element(&$element) {
+  if (isset($element['#type'])) {
+    if (isset($element['#default_value'])) {
+      $element['#type'] = 'value';
+      $element['#value'] = $element['#default_value'];
+    }
+    else {
+      unset($element['#type']);
+    }
+    unset($element['#theme']);
+  }
+  foreach (element_children($element) as $child) {
+    _comment_alter_taxonomy_disable_element($element[$child]);
+  }
+}
+
+/**
+ * Implementation of hook_comment().
+ */
+function comment_alter_taxonomy_comment($arg, $op) {
+  // $arg can be a comment object, or a form or form_values.
+  switch ($op) {
+    case 'insert':
+      if (isset($arg['taxonomy'])) {
+        // Fetch the cid of the previous comment and store the tids of the current node if necessary.
+        $previous_cid = (int) db_result(db_query_range('SELECT cid FROM {comments} WHERE nid = %d AND cid < %d ORDER BY cid DESC', $arg['nid'], $arg['cid'], 0, 1));
+        $node = node_load($arg['nid']);
+        _comment_alter_taxonomy_save_tids($node, $previous_cid);
+
+        // Save the terms to the node itself.
+        taxonomy_node_save($node, $arg['taxonomy']);
+
+        // Load the node again so we can reset the internal node_load cache.
+        $node = node_load($arg['nid'], NULL, TRUE);
+
+        // Store the tids assigned to the node at this point to the {comment_alter_taxonomy} table.
+        _comment_alter_taxonomy_save_tids($node, $arg['cid']);
+      }
+      break;
+
+    case 'delete':
+      db_query("DELETE FROM {comment_alter_taxonomy} WHERE cid = %d", $arg->cid);
+      break;
+  }
+}
+
+/**
+ * Saves a record of the terms assigned to a given node and comment to the
+ * {comment_alter_taxonomy} database table.  This function does
+ * not actually cause terms to be saved to the node itself, but
+ * saves a record of the terms assigned to a node at the time of a certain
+ * comment.
+ *
+ * @param $node
+ *   The node for which to save the term.
+ * @param $cid
+ *   The cid of the comment.  Set this to 0 if this is the original
+ *   node and not an actual comment.
+ */
+function _comment_alter_taxonomy_save_tids($node, $cid) {
+  global $db_type;
+  if (!db_result(db_query_range("SELECT cid FROM {comment_alter_taxonomy} WHERE nid = %d AND cid = %d", $node->nid, $cid, 0, 1))) {
+    // Ignore is only supported on MySQL.
+    $ignore = $db_type == 'mysql' || $db_type == 'mysqli' ? 'IGNORE' : '';
+
+    // Insert a dummy tid = 0 to ensure the table contain at least one row for this comment.
+    // Insert is first, do reduce possible concurrency issue. That query can
+    // fail in case of concurrent insert in some cases, suppress error display.
+    @db_query("INSERT $ignore INTO {comment_alter_taxonomy} (nid, cid, tid) VALUES (%d, %d, %d)", $node->nid, $cid, 0);
+
+    // Insert the real terms.
+    @db_query("INSERT $ignore INTO {comment_alter_taxonomy} (nid, cid, tid) SELECT nid, %d, tid FROM {term_node} WHERE vid = %d", $cid, $node->vid);
+
+    // If the previous query actually inserted terms, remove the dummy tid = 0.
+    if (db_result(db_query_range("SELECT cid FROM {comment_alter_taxonomy} WHERE nid = %d AND cid = %d AND tid <> 0", $node->nid, $cid, 0, 1))) {
+      db_query("DELETE FROM {comment_alter_taxonomy} WHERE nid = %d AND cid = %d and tid = 0", $node->nid, $cid);
+    }
+  }
+}
+
+/**
+ * Find all terms associated with the given node, ordered by vocabulary and term weight.
+ *
+ * This is almost a direct copy from the taxonomy_node_get_terms() function except
+ * that it's possible to reset the static $terms variable so that changes to
+ * a node's taxonomy made in this module can be read back by other modules
+ * during the page load.
+ *
+ * @param $node
+ *   The node.
+ * @param $key
+ *   Key in the array to look for.
+ * @param $reset
+ *   If set to true, terms for the specified $nid stored in the static cache will
+ *   be ignored and the terms will be re-retrieved from the database.
+ * @return
+ *   An array of terms associated with the given node, ordered by vocabulary
+ *   and term weight.
+ */
+function _comment_alter_taxonomy_taxonomy_node_get_terms($node, $key = 'tid', $reset = FALSE) {
+  static $terms;
+
+  if (!isset($terms[$node->vid][$key]) || $reset) {
+    $result = db_query(db_rewrite_sql('SELECT t.* FROM {term_node} r INNER JOIN {term_data} t ON r.tid = t.tid INNER JOIN {vocabulary} v ON t.vid = v.vid WHERE r.vid = %d ORDER BY v.weight, t.weight, t.name', 't', 'tid'), $node->vid);
+    $terms[$node->vid][$key] = array();
+    while ($term = db_fetch_object($result)) {
+      $terms[$node->vid][$key][$term->$key] = $term;
+    }
+  }
+  return $terms[$node->vid][$key];
+}
+
+/**
+ * Implementation of hook_project_issue_metadata().
+ *
+ * Adds taxonomy terms to the data that will be used to create the
+ * project issue metadata tables and which is used when creating
+ * issue notification e-mail messages.
+ *
+ * @param $op
+ *  Specifies the type of table that is being created.  'current' is passed when generating the metadata table
+ *  at the top of issue nodes and 'diff' is passed when creating tables used in comments and when creating
+ *  issue notification e-mail messages.
+ * @param $node
+ *  The node object of the project issue.
+ * @param $metadata
+ *  An array of metadata to use in the final table.
+ * @param $old_data
+ *  A node or comment object containing the 'old' data when $op == 'diff'.
+ * @param $new_data
+ *  A node or comment object containing the 'new' data when $op == 'diff'.
+ */
+function comment_alter_taxonomy_project_issue_metadata($op, $node, &$metadata = array(), $old_data = NULL, $new_data = NULL) {
+  switch ($op) {
+    case 'current':
+      if (!isset($node->taxonomy)) {
+        return;
+      }
+
+      // Get an array containing all vocabulary objects that are associated
+      // with project_issue nodes and which are alterable by comment_alter_taxonomy.
+      $allowed = comment_alter_taxonomy_get_alterable_vocabularies('project_issue');
+      if (empty($allowed)) {
+        return;
+      }
+
+      // Group the terms assigned to the node by vocabulary and create an additional
+      // row in the table for each vocabulary.  Exclude any terms in vocabularies
+      // which are not alterable by the comment_alter_taxonomy module.
+      $terms = $node->taxonomy;
+      if (!empty($terms)) {
+        $grouped_terms = array();
+        foreach ($terms as $tid => $term) {
+          $vid = $term->vid;
+          if (isset($allowed[$vid])) {
+            if (!isset($metadata["taxonomy_vid_$vid"])) {
+              $vocabulary = $allowed[$vid];
+              $metadata["taxonomy_vid_$vid"] = array('label' => check_plain(t("$vocabulary->name")));
+            }
+            $grouped_terms[$vid][] = theme('comment_alter_taxonomy_project_issue_metadata_term', $node, $term);
+          }
+        }
+        foreach ($grouped_terms as $vid => $terms) {
+          $metadata["taxonomy_vid_$vid"]['current'] = implode(', ', $terms);
+        }
+        break;
+      }
+
+    case 'diff':
+      // Get an array containing all vocabulary objects that are associated
+      // with project_issue nodes and which are alterable by comment_alter_taxonomy.
+      $allowed = comment_alter_taxonomy_get_alterable_vocabularies('project_issue');
+      if (empty($allowed)) {
+        return;
+      }
+
+      // For each vocabulary in $allowed, create an element of $metadata to store term
+      // changes for that vocabulary.  Doing this now makes sure that the final
+      // $metadata array will have the vocabularies ordered by weight and makes sure
+      // that the vocabularies are displayed in the same order every time.
+      // Before this function returns these values in $metadata will be checked and any
+      // that do not reflect term changes will be unset.
+      foreach ($allowed as $vid => $vocabulary) {
+        // For multiple select vocabularies, each term will be stored in $metadata
+        // as an element of an array for both 'old' and 'new'.  For single
+        // select vocabularies, all terms for the vocabulary are placed
+        // in a single string.
+        $metadata["taxonomy_vid_$vid"] = array(
+          'label' => t($vocabulary->name),
+          'old' => $vocabulary->multiple || $vocabulary->tags ? array() : '',
+          'new' => $vocabulary->multiple || $vocabulary->tags ? array() : '',
+          );
+      }
+
+      $old_terms = _comment_alter_taxonomy_build_term_list($node, $old_data);
+      $new_terms = _comment_alter_taxonomy_build_term_list($node, $new_data);
+
+      if ($old_terms !== FALSE && $new_terms !== FALSE && (!empty($old_terms) || !empty($new_terms))) {
+        // Merge all terms together.
+        $all_terms = $old_terms + $new_terms;
+
+        foreach ($all_terms as $tid => $term) {
+          // If a term is in both $old_terms and $new_terms, than it didn't change and we can ignore
+          // it since we're only interested in terms that were changed between $old_data and $new_data.
+          if (!empty($old_terms) && !empty($new_terms) && isset($old_terms[$tid]) && isset($new_terms[$tid])) {
+            continue;
+          }
+
+          $vid = $term->vid;
+          // Skip this term if its not associated with a vocabulary that's alterable
+          // by comment_alter_taxonomy.
+          if (!isset($metadata["taxonomy_vid_$vid"])) {
+            continue;
+          }
+
+          // Determine if this term goes in the 'old' or 'new' element of
+          // the $metadata array.
+          if (isset($old_terms[$tid])) {
+            $old_new = 'old';
+          }
+          else {
+            $old_new = 'new';
+          }
+
+          // Add this term change to the $metadata array.
+          $themed_term = theme('comment_alter_taxonomy_project_issue_metadata_term', $node, $term);
+          if (is_array($metadata["taxonomy_vid_$vid"][$old_new])) {
+            // Multiple select vocabulary.
+            $metadata["taxonomy_vid_$vid"][$old_new][$tid] = $themed_term;
+          }
+          elseif (!empty($metadata["taxonomy_vid_$vid"][$old_new])) {
+            $metadata["taxonomy_vid_$vid"][$old_new] .= ', '. $themed_term;
+          }
+          else {
+            $metadata["taxonomy_vid_$vid"][$old_new] = $themed_term;
+          }
+        }
+      }
+
+      // Now that all taxonomy changes are stored in $metadata, we need to go back
+      // and remove any elements created at the top of this function that do
+      // not contain taxonomy changes.
+      foreach ($allowed as $vid => $vocabulary) {
+        if (isset($metadata["taxonomy_vid_$vid"]) && empty($metadata["taxonomy_vid_$vid"]['old']) && empty($metadata["taxonomy_vid_$vid"]['new'])) {
+          unset($metadata["taxonomy_vid_$vid"]);
+        }
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function comment_alter_taxonomy_theme() {
+  return array(
+    'comment_alter_taxonomy_project_issue_metadata_term' => array(
+      'arguments' => array('node' => NULL, 'term' => NULL),
+    ),
+  );
+}
+
+/**
+ * Theme a taxonomy term in a project issue metadata table.
+ *
+ * NOTE:  This function (and any function that overrides it)
+ * must sanitize the term name to prevent XSS vulnerabilities.
+ *
+ * @param $node
+ *  The node for which the taxonomy was altered.
+ * @param $term
+ *  The taxonomy term object.
+ * @return
+ *  The themed term.
+ */
+function theme_comment_alter_taxonomy_project_issue_metadata_term($node, $term) {
+  if (isset($term->tid)) {
+    $link_options = array();
+    if (module_exists('project_issue') && $node->type == 'project_issue') {
+      $project = node_load($node->project_issue['pid']);
+      $vocabulary = taxonomy_vocabulary_load($term->vid);
+      $identifier = project_issue_views_filter_identifier($vocabulary->name);
+      $path = 'project/issues/search/'. $project->project['uri'];
+      $link_options['query'] = array($identifier => $term->name);
+    }
+    else {
+      $path = taxonomy_term_path($term);
+    }
+    return l($term->name, $path, $link_options);
+  }
+  else {
+    // New free tagging terms won't yet have a tid in the node preview mode
+    // and therefore shouldn't be printed as links.
+    return check_plain($term->name);
+  }
+}
+
+/**
+ * Build a list of all taxonomy terms associated with a comment.
+ *
+ * @param $node
+ *   The node.
+ * @param $comment
+ *   Either a comment object or the result of a posted comment.
+ * @return
+ *   A straight array (not nested) of term objects with the tid of each
+ *   term in the key of the array, when possible.  For new free tagging
+ *   terms, it's not possible to get the term object, since the term
+ *   is not yet saved to the database, so an object containing
+ *   all information known about the term is included instead.  In the
+ *   case where no information at all is saved in {comment_alter_taxonomy}
+ *   for a given comment, FALSE is returned.
+ */
+function _comment_alter_taxonomy_build_term_list($node, $comment) {
+  $term_list = array();
+  // For previews and validation, $comment->taxonomy should be set
+  // and must be processed to get the terms.  Otherwise, they can
+  // be retrieved from the {comment_alter_taxonomy} table.
+  if (isset($comment->taxonomy)) {
+    foreach ($comment->taxonomy as $key => $value) {
+      if ($key == 'tags') {
+        foreach ($value as $vid => $tags) {
+          $tags_array = explode(',', $tags);
+          foreach ($tags_array as $tag) {
+            $tag = trim($tag);
+            if (empty($tag)) {
+              continue;
+            }
+
+            // See if the term exists in the chosen vocabulary
+            // and return the tid; otherwise, add a new record.
+            // This block is modified from taxonomy_node_save().
+            $possibilities = taxonomy_get_term_by_name($tag);
+            $tag_tid = NULL; // tid match, if any.
+            foreach ($possibilities as $possibility) {
+              if ($possibility->vid == $vid) {
+                $tag_tid = $possibility->tid;
+                $term_list[$tag_tid] = taxonomy_get_term($tag_tid);
+              }
+            }
+            // This term is not in the database yet.  Add what we know about
+            // it to the $term_list array.  We use a hack here for the key
+            // since we don't want to accidentally overwrite another term in $term_list.
+            if (empty($tag_tid)) {
+              $term_list["$vid***$tag"]->tid = NULL;
+              $term_list["$vid***$tag"]->vid = $vid;
+              $term_list["$vid***$tag"]->name = $tag;
+              $tag_tid = NULL;
+            }
+          }
+        }
+      }
+      elseif (is_object($value)) {
+        $term_list[$key] = $value;
+      }
+      elseif (is_array($value)) {
+        foreach ($value as $tid) {
+          $term_list[$tid] = taxonomy_get_term($tid);
+        }
+      }
+      else {
+        $term_list[$value] = taxonomy_get_term($value);
+      }
+    }
+  }
+  else {
+    $cid = isset($comment->cid) ? $comment->cid : 0;
+    $result = db_query(db_rewrite_sql('SELECT cat.tid, t.* FROM {comment_alter_taxonomy} cat LEFT JOIN {term_data} t ON cat.tid = t.tid LEFT JOIN {vocabulary} v ON t.vid = v.vid WHERE cat.nid = %d AND cat.cid = %d ORDER BY v.weight, t.weight, t.name', 't', 'tid'), $node->nid, $cid);
+    while ($term = db_fetch_object($result)) {
+      $term_list[$term->tid] = $term;
+    }
+    if (empty($term_list)) {
+      // This cannot be empty because we save a dummy tid = 0 term even if the
+      // node was associated to no terms at the time the comment was saved.
+      // This can only mean that this module was not enabled at that time,
+      // so abort the diff.
+      return FALSE;
+    }
+    // Remove the dummy tid = 0 if set.
+    unset($term_list[0]);
+  }
+  return $term_list;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * Note that the taxonomy module must have a weight lighter
+ * than the comment_alter_taxonomy module, which itself must
+ * be lighter than the project_issue module.
+ */
+function comment_alter_taxonomy_nodeapi(&$node, $op, $arg = 0) {
+  switch ($op) {
+    case 'load':
+      // This is necessary because taxonomy_nodeapi() retrieves the terms using
+      // taxonomy_node_get_terms(), which caches the terms for nodes it has already
+      // retrieved the terms for.  Since this module changes terms, if another module
+      // were to call node_load() during the same page request and then call
+      // node_save() on the same node, the changes in terms made by this module
+      // would get eliminated.  The project_issue module has this exact behavior.
+      $output['taxonomy'] = _comment_alter_taxonomy_taxonomy_node_get_terms($node, 'tid', TRUE);
+      return $output;
+      break;
+
+    case 'insert':
+      // Store any taxonomy terms associated with a node to the
+      // {comment_alter_taxonomy} table.
+      //
+      // Since the taxonomy module has a lighter weight than the
+      // comment_alter_taxonomy module, and since taxonomy_nodeapi()
+      // calls taxonomy_node_save() when $op == 'insert', the terms
+      // for this node have already been saved to the database.
+      // That makes our job easier here, because we can just call
+      // comment_alter_taxonomy_taxonomy_node_get_terms() to get them
+      // back from the database.
+      $tids = array_keys(_comment_alter_taxonomy_taxonomy_node_get_terms($node, 'tid', TRUE));
+
+      // Delete any records already in the table for this original node (for
+      // original nodes, the cid is stored as 0).
+      db_query("DELETE FROM {comment_alter_taxonomy} WHERE nid = %d AND cid = %d", $node->nid, 0);
+
+      foreach ($tids as $tid) {
+        if (!empty($tid)) {
+          db_query('INSERT INTO {comment_alter_taxonomy} (nid, cid, tid) VALUES (%d, %d, %d)', $node->nid, 0, $tid);
+        }
+      }
+      break;
+
+    case 'delete revision':
+      // We don't have anything to do here,
+      // as we version terms by cid, not by vid.
+      break;
+
+    case 'delete':
+      db_query("DELETE FROM {comment_alter_taxonomy} WHERE nid = %d", $node->nid);
+      break;
+  }
+}
+
+/**
+ * Get the vocabularies associated with a given node type
+ * that can be altered via comment_alter_taxonomy.
+ *
+ * @param $type
+ *   Type of node for which to get vocabularies.
+ * @param $reset
+ *   Whether to reset the internal vocabularies cache.
+ * @return
+ *   An array of vocabulary objects that are alterable by this module.
+ */
+function comment_alter_taxonomy_get_alterable_vocabularies($type, $reset = NULL) {
+  static $vocabularies = NULL;
+
+  if ($reset) {
+    $vocabularies = NULL;
+  }
+
+  if (!isset($vocabularies[$type])) {
+    $vocabularies[$type] = array();
+    $all_vocabularies = taxonomy_get_vocabularies($type);
+    $alterable_vocabularies = variable_get('comment_alter_taxonomy_vocabularies', array());
+    foreach ($all_vocabularies as $vid => $vocabulary) {
+      if (!empty($alterable_vocabularies[$vid])) {
+        $vocabularies[$type][$vid] = $vocabulary;
+      }
+    }
+  }
+  return $vocabularies[$type];
+}
+
+/**
+ * Implementation of hook_link_alter().
+ *
+ * Remove taxonomy links on project issues, when required.
+ */
+function comment_alter_taxonomy_link_alter(&$links, $node) {
+  if (module_exists('project_issue') && $node->type == 'project_issue') {
+    $allowed = comment_alter_taxonomy_get_alterable_vocabularies('project_issue');
+    if (empty($allowed) || empty($node->taxonomy)) {
+      return;
+    }
+    if (!empty($node->taxonomy)) {
+      foreach ($node->taxonomy as $tid => $term) {
+        if (isset($allowed[$term->vid])) {
+          unset($links['taxonomy_term_'. $term->tid]);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_taxonomy().
+ *
+ * Handle deletion of terms and vocabularies from the database.
+ */
+function comment_alter_taxonomy_taxonomy($op, $type, $array = NULL) {
+  if ($op == 'delete') {
+    if ($type == 'vocabulary') {
+      // Delete this vocabulary from the comment_alter_taxonomy_vocabularies variable.
+      // When a vocabulary is deleted this hook is first called for each term
+      // in the vocabulary, so those rows will already be deleted by the time
+      // execution gets here.
+      $vocabularies = variable_get('comment_alter_taxonomy_vocabularies', array());
+      if (isset($vocabularies[$array['vid']])) {
+        unset($vocabularies[$array['vid']]);
+        variable_set('comment_alter_taxonomy_vocabularies', $vocabularies);
+      }
+    }
+
+    // Delete the rows in {comment_alter_taxonomy} for the term.
+    db_query('DELETE FROM {comment_alter_taxonomy} WHERE tid = %d', $tids);
+  }
+}
+
+/**
+ * Wrapper to define callbacks in include files.
+ */
+function _comment_alter_taxonomy_callback($file, $function) {
+  $args = func_get_args();
+  $file = array_shift($args);
+  $function = array_shift($args);
+
+  include_once drupal_get_path('module', 'comment_alter_taxonomy') .'/'. $file;
+  return call_user_func_array($function, $args);
+}

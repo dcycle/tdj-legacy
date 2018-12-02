@@ -1,0 +1,14 @@
+name = Project Solr
+description = Provides integration with ApacheSolr for facet-based project browsing
+package = Project
+dependencies[] = project
+dependencies[] = taxonomy
+dependencies[] = apachesolr
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-09-25
+version = "6.x-1.0-alpha5"
+core = "6.x"
+project = "project"
+datestamp = "1316932012"
+

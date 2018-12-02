@@ -1,0 +1,5 @@
+<?php
+
+include_once('tdj_frontpageanimation.features.inc');
+
+drupal_add_css(drupal_get_path('module', 'tdj_frontpageanimation') . '/tdj_frontpageanimation.css');

@@ -1,0 +1,82 @@
+<?php
+// $Id: mail_logger.install,v 1.3 2008/05/25 23:30:30 litwol Exp $
+
+function mail_logger_schema() {
+  $schema = array();
+  $schema['mail_logger'] = array(
+    'description'           => t('Mail Logger table stores outgoing mails'),
+    'fields'      => array(
+      'mlid'          => array(
+        'description'   => t('Mail Logger entry ID'),
+        'type'          => 'serial',
+        'not null'      => TRUE,
+        'unsigned'      => TRUE,
+      ),
+      'mailkey'       => array(
+        'description'   => t('a key identifying the mail type'),
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'to'            => array(
+        'description'   => t('to whom this mail is going'),
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'subject'       => array(
+        'description'   => t('Mail subject'),
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'body'          => array(
+        'description'   => t('Body text of the mail'),
+        'type'          => 'text',
+        'not null'      => TRUE,
+        'size'          => 'big',
+      ),
+      'from'          => array(
+        'description'   => t('the FROM email address'),
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'headers'       => array(
+        'description'   => t('Headers of the outgoing mail'),
+        'type'          => 'text',
+        'not null'      => TRUE,
+        'size'          => 'big',
+      ),
+      'date_sent'     => array(
+        'description'   => t('Mail Logger entry ID'),
+        'type'          => 'int',
+        'not null'      => TRUE,
+        'unsigned'      => TRUE,
+      ),
+      'language'      => array(
+        'description'   => t('Language code'),
+        'type'          => 'varchar',
+        'length'        => 20,
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key'     => array('`mlid`'),
+    'indexes'         => array(
+      '`to`'              => array('`to`'),
+      '`from`'            => array('`from`'),
+      '`subject`'         => array(array('`subject`', 20)),
+      '`date_sent`'       => array('`date_sent`'),
+      '`language`'        => array('`language`'),
+    ),
+  );
+  
+  return $schema;
+}
+function mail_logger_install() {
+  drupal_install_schema('mail_logger');
+  
+}
+function mail_logger_uninstall() {
+  drupal_uninstall_schema('mail_logger');
+}

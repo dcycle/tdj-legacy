@@ -1,0 +1,90 @@
+<?php
+// $Id$
+
+
+
+/**
+
+ * @file
+
+ * TODO: Enter file description here.
+
+ */
+
+
+/**
+ * Implementation of hook_block().
+ */
+function qumbia_footer_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+
+    case 'list':
+      $blocks[0]['info'] = t('Qumbia Footer Block');
+      // OPTIONAL: Add additional block descriptions here, if required.
+      return $blocks;
+
+    case 'configure':
+      // OPTIONAL: Enter form elements to add to block configuration screen, if required.    
+      if ($delta == 0 && user_access('administer module')) {
+        $form['module_block_1'] = array(
+          '#type' => 'textfield', 
+          '#title' => t('site copyright holder'),
+          '#default_value' => qumbia_footer_get_site_name(),
+        );
+      }
+      return $form;
+
+    case 'save':
+      // OPTIONAL: Add code to trigger when block configuration is saved, if required.
+      if ($delta == 0) {
+        qumbia_footer_set_site_name($edit['module_block_1']);
+      }
+      break;
+
+    case 'view':
+      if ($delta == 0) {
+        $block['subject'] = t('<none>');
+        $block['content'] = qumbia_footer_block_content();
+      }
+      // OPTIONAL: Enter additional cases for each additional block, if defined.
+
+      return $block;
+  }    
+}
+
+function qumbia_footer_get_site_name() {
+  $r = variable_get('qumbia_footer_block_co_name', variable_get('site_name', ''));
+  
+  return $r;
+}
+
+function qumbia_footer_set_site_name($name) {
+  if($name != variable_get('site_name', '')) {
+    variable_set('qumbia_footer_block_co_name', $name);
+  } else {
+    variable_del('qumbia_footer_block_co_name');
+  }
+}
+
+function qumbia_footer_block_content() {
+  $r = 'copyright (c) 2009 ' . qumbia_footer_get_site_name();
+
+  $theSecondaryLinks = menu_secondary_links();
+  
+  $the_link_array = array();
+  
+  foreach($theSecondaryLinks as $the_link) {
+    $the_href = $the_link['href'];
+    $the_title = $the_link['title'];
+    
+    $the_link_array[] = l($the_title, $the_href); 
+  }
+
+  $r .= '<br/>';
+  $r .= implode(' | ', $the_link_array);
+  $r .= '<br/>';
+  $r .= 'Site: ' . l('Qumbia', 'http://qumbia.ca');
+
+  return $r;
+}
+

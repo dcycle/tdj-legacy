@@ -1,0 +1,63 @@
+<?php
+// $Id$
+
+function mtcleaninput_process_text($aText)
+{
+	$theText = $aText;
+
+	$theText = str_replace('&lt;!--[if', '<!--[if', $theText);
+	
+	$theText = str_replace('<br />
+<meta', '<meta', $theText);
+
+ 	$theText = str_replace('<p>    <br />
+<br />
+<br />
+
+<br />
+</p></h2>
+<h2>', '', $theText);
+
+	return $theText;
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function mtcleaninput_filter($op, $delta = 0, $format = -1, $text = '') {
+
+	$theInputText = $text;
+	$theOperation = $op;
+		// can be list, description, prepare, process, settings
+	$theFilter = $delta;
+
+  // The "list" operation provides the module an opportunity to declare both how
+  // many filters it defines and a human-readable name for each filter. Note that
+  // the returned name should be passed through t() for translation.
+  if ($theOperation == 'list') {
+    return array(0 => t('mtcleaninput'));
+  }
+
+  // All operations besides "list" provide a $delta argument so we know which
+  // filter they refer to.
+  switch ($delta) {
+    case 0:
+      switch ($theOperation) {
+        // This description is shown in the administrative interface, unlike the
+        // filter tips which are shown in the content editing interface.
+        case 'description':
+          return t('remove some annoying word-generated code when pasting (in FF3 especially).');
+
+        // We don't need the "prepare" operation for this filter, but it's required
+        // to at least return the input text as-is.
+        case 'prepare':
+          return $theInputText;
+
+        // The actual filtering is performed here. The supplied text should be
+        // returned, once any necessary substitutions have taken place.
+        case 'process':
+			return mtcleaninput_process_text($theInputText);
+      }
+      break;
+  }
+}

@@ -1,0 +1,112 @@
+<?php
+// $Id: mt.module,v 1.5.2.1.2.1 2008/02/19 19:56:53 jbrown Exp $
+
+/**
+ * Implementation of hook_filter_tips().
+ */
+function mthtmlcleaner_filter_tips($delta, $format, $long = FALSE) {
+  switch ($delta) {
+    case 0:
+      if ($long) {
+        return t('mthtmlcleaner');
+      }
+      else {
+        return t('mthtmlcleaner');
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function mthtmlcleaner_filter($op, $delta = 0, $format = -1, $text = '') {
+
+	$theInputText = $text;
+	$theOperation = $op;
+		// can be list, description, prepare, process, settings
+	$theFilter = $delta;
+
+  // The "list" operation provides the module an opportunity to declare both how
+  // many filters it defines and a human-readable name for each filter. Note that
+  // the returned name should be passed through t() for translation.
+  if ($theOperation == 'list') {
+    return array(0 => t('mt filter'));
+  }
+
+  // All operations besides "list" provide a $delta argument so we know which
+  // filter they refer to.
+  switch ($delta) {
+    case 0:
+      switch ($theOperation) {
+        // This description is shown in the administrative interface, unlike the
+        // filter tips which are shown in the content editing interface.
+        case 'description':
+          return t('mthtmlcleaner.');
+
+        // We don't need the "prepare" operation for this filter, but it's required
+        // to at least return the input text as-is.
+        case 'prepare':
+          return $theInputText;
+
+        // The actual filtering is performed here. The supplied text should be
+        // returned, once any necessary substitutions have taken place.
+        case 'process':
+			return mthtmlcleaner_process_text($theInputText);
+
+
+        // Filter settings for pathfilter.
+        case 'settings':
+          return mthtmlcleaner_settings();
+      }
+      break;
+  }
+}
+
+/**
+ * Helper settings function for hook_filter('settings').
+ */
+function mthtmlcleaner_settings() {
+  $form = array();
+  $form['pathfilter'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Internal path filter'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => FALSE,
+  );
+  $form['pathfilter']['pathfilter_link_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Convert internal paths to'),
+    '#options' => array('absolute' => t('Absolute links'), 'relative' => t('Relative links')),
+    '#default_value' => variable_get('pathfilter_link_type', 'absolute'),
+    '#description' => t('Should internal paths be transformed to absolute URLs, such as %absolute or relative paths, like %relative. Note that your changes may not appear until the cache has been cleared.', array('%absolute' => 'http://www.example.com/my-page', '%relative' => '/my-page')),
+  );
+  return $form;
+}
+
+$freshray_authorized = true;
+
+function mthtmlcleaner_process_text($aText)
+{
+	$theText = $aText;
+
+	$r = $theText;
+
+	$r = preg_replace("/font-size: [0-9]*pt;/", "", $r);
+	$r = preg_replace("/style=\"\"/", "", $r);
+	$r = preg_replace("/<font[^>]*>/", "", $r);
+	$r = preg_replace("/<\/font>/", "", $r);
+	$r = preg_replace("/<li><p[^>]*>([^(<\/p><\/li>)]*)<\/p><\/li>/", "<li>$1</li>", $r);
+	$r = preg_replace("/<meta[^>]*>(.*)<\/meta>/", "", $r);
+
+
+	if(!$r) {
+	
+		$theErr = preg_last_error();
+	
+		$r = "<!--S2orry, an error occured with the server resize filter: ($theErr)-->".$theText;
+	}
+	
+	return $r;
+}
+

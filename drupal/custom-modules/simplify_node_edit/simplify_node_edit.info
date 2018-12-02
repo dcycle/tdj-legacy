@@ -1,0 +1,7 @@
+; $Id$
+
+name = Simplify Node Edit
+
+description = Module making the node edit and create module easier to understand for some users by splitting into basic and advanced settings.
+
+core = 6.x

@@ -1,0 +1,302 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" >
+<!--
+ * File Name: fck_insertHtmlCode.html
+ * 	Insert Code dialog window.
+ * 
+ * File Authors:
+ * 		Abdul-Aziz Al-Oraij (top7up@hotmail.com)
+ * 		Michel Staelens
+ * 		Bernadette Cierzniak
+ * 		Frederico Caldeira Knabben (fredck@fckeditor.net)
+ *      Nico Piponides	
+-->
+<html>
+	<head>
+		<title>Insert Form Element</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta content="noindex, nofollow" name="robots">
+		<link rel="stylesheet" type="text/css" href="fck_insertHtmlCode.css" />
+<script type="text/javascript" src="dialogue.js"></script>
+		<script type="text/javascript">
+
+var oEditor = window.parent.InnerDialogLoaded() ;
+
+window.onload = function()
+{
+	document.body.style.padding = '0px' ;
+
+	// First of all, translate the dialog box texts
+	oEditor.FCKLanguageManager.TranslatePage(document) ;
+
+	window.parent.SetOkButton( true ) ;
+	window.parent.SetAutoSize( true ) ;	
+	
+	MenuHasChanged();
+}
+
+function MenuHasChanged() {
+
+	var oArea = document.getElementById( 'form_fieldtype' ) ;
+	
+	theValue = oArea.value;
+	
+	switch(theValue) {
+	
+      case 'checkbox':
+      	ChangeToCheckbox();
+      	break;
+      case 'textfield':	
+        ChangeToTextField();
+      	break;
+	  case 'textarea':
+        ChangeToTextArea();
+	  	break;
+	  case 'selection':
+        ChangeToSelection();
+	    break;
+	  case 'submit':
+        ChangeToSubmit();
+	  	break;
+	}
+}
+
+// taken from http://www.javascriptkit.com/javatutors/dom3.shtml (((MODIFIED
+function hide(which){
+	which = document.getElementById(which)
+	which.style.display="none"
+}
+function show(which){
+	which = document.getElementById(which)
+	which.style.display="block"
+}
+
+function setname(name) {
+
+	theName = name;
+
+	aaa = document.getElementById( 'form_changethisname' );
+	
+	if(!aaa) {
+		alert('form_changethisname does not exist');
+		return;
+	}
+
+	aaa.innerHTML = theName;
+
+	aaa = document.getElementById( 'form_changethisname2' );
+	
+	if(!aaa) {
+		alert('form_changethisname2 does not exist');
+		return;
+	}
+	
+	aaa.innerHTML = theName;
+
+}
+
+function ChangeToCheckbox() {
+
+	setname("Checkbox");
+
+	show('form_checkbox_default_state_block');
+	hide('form_text_field_default_value_block') ;
+	hide( 'form_required_block' ) ;
+	hide( 'form_text_area_default_value_block' ) ;
+	hide( 'form_list_items_block' ) ;
+
+}
+
+function ChangeToTextField() {
+
+	setname("Text Field");
+
+	hide('form_checkbox_default_state_block');
+	show('form_text_field_default_value_block') ;
+	show( 'form_required_block' ) ;
+	hide( 'form_text_area_default_value_block' ) ;
+	hide( 'form_list_items_block' ) ;
+
+}
+
+function ChangeToTextArea() {
+
+	setname("Text Area");
+
+	hide('form_checkbox_default_state_block');
+	hide('form_text_field_default_value_block') ;
+	show( 'form_required_block' ) ;
+	show( 'form_text_area_default_value_block' ) ;
+	hide( 'form_list_items_block' ) ;
+
+}
+
+function ChangeToSelection() {
+
+	setname("Selection");
+
+	hide('form_checkbox_default_state_block');
+	hide('form_text_field_default_value_block') ;
+	show( 'form_required_block' ) ;
+	hide( 'form_text_area_default_value_block' ) ;
+	show( 'form_list_items_block' ) ;
+
+}
+
+function ChangeToSubmit() {
+
+	setname("Submit Button");
+
+	hide('form_checkbox_default_state_block');
+	hide('form_text_field_default_value_block') ;
+	hide( 'form_required_block' ) ;
+	hide( 'form_text_area_default_value_block' ) ;
+	hide( 'form_list_items_block' ) ;
+
+}
+
+
+
+function Ok()
+{
+/*	orig code 
+*
+	var oArea = document.getElementById( 'insCode_area' ) ;
+
+	if ( oArea.value.length > 0 )
+		oEditor.FCK.InsertHtml( oArea.value ) ;
+
+	return true ; / */
+
+	
+	var oArea = document.getElementById( 'insCode_area' ) ;
+
+	var theText = oArea.value;
+	var theError = CheckText(theText);
+	var theParsedText = ParseText(theText);
+
+	if ( theError ) {
+
+		alert(theError);
+
+		return false;
+		
+	} else {
+
+		oEditor.FCK.InsertHtml( ParseText(theText) ) ;
+
+		return true ;
+	}
+}
+
+		</script>
+	</head>
+	
+	<!--
+	
+	We want to be able to insert any of the following:
+	
+	(answer will go to your site's email address)
+	
+		- checkbox
+			name
+			default on, off
+		- text field
+			name
+			default
+			required
+		- text area
+			name
+			default
+			required
+		- selection
+			list (default: use *)
+			multiple select? yes no
+			required? yes no
+			is a menu? yes no
+	
+	-->
+	
+	
+	<body style="OVERFLOW: hidden" scroll="no">
+
+<form name="form1" method="post" action="">
+	<span>
+   		<select id="form_fieldtype" name="fieldtype" onChange="MenuHasChanged()">
+	      <option value="checkbox">Checkbox</option>
+      <option value="textfield" selected>Text Field</option>
+      <option value="textarea">Text Area</option>
+      <option value="selection">Selection</option>
+      <option value="submit">Submit Button</option>
+    </select>
+  </span>
+
+<span display="block">
+  <p><span id="form_changethisname">Text Field</span> Name:</p>
+  <p> 
+    <input type="text" id="form_fieldname" name="fieldname">
+  </p>
+</span>
+
+  <span id="form_checkbox_default_state_block"><p>Checkbox Default State:</p>
+  <p> 
+    <input type="radio" name="form_checkbox_checked" value="on">
+    Checked&nbsp;&nbsp;&nbsp; 
+    <input name="form_checkbox_checked" type="radio" value="off" checked>
+    Unchecked </p></span>
+    
+  <span id="form_text_field_default_value_block"><p>Text Field Default Value:</p>
+  <p> 
+    <input type="text" name="textfield2">
+  </p></span>
+  
+  
+  <span id="form_required_block">
+  <p>Required <span id="form_changethisname2">Text Field</span>: </p>
+  <p>
+    <input type="radio" name="req" value="yes">
+    Yes&nbsp;&nbsp;&nbsp; 
+    <input name="req" type="radio" value="no" checked>
+    No </p></span>
+    
+  <span id="form_text_area_default_value_block">
+  <p>Text Area Default Value: </p>
+  <p>
+    <textarea name="textarea"></textarea>
+  </span>
+  
+    <span id="form_list_items_block">
+  <p>List items (separate with a comma, precede the default value with a star): 
+    <textarea name="textarea2">Hot Dogs
+*Hamburger
+Milk
+Other</textarea>
+  </p>
+  <p>Multiple Selection Allowed:</p>
+  <p> 
+    <input type="radio" name="multisel" value="yes">
+    Yes&nbsp;&nbsp;&nbsp; 
+    <input name="multisel" type="radio" value="no" checked>
+    No </p>
+  <p>Type: </p>
+  <p>
+    <input type="radio" name="listtype" value="menu">
+    Menu (takes less space)&nbsp;&nbsp;&nbsp; 
+    <input name="listtype" type="radio" value="list" checked>
+    List (takes more space)</p>
+<p>&nbsp; </p></span>
+  </form>
+  
+<!--
+
+
+
+
+
+	SVP ins rer une des choses suivantes:<ul><li>le code correspondant au vid o YouTube (par exemple, <span style="color:red">slcIP_oIWm0</span>)</li><li>le code correspondant au vid o Google (par exemple, <span style="color:red">8138281894352463527</span> ou 							        <span style="color:red">-5605589770378150779</span>). Assurez-vous de mettre un tiret s'il y en a un.</li><li>le code html correspondant au vid o que vous voulez entrer (commen ant g n ralement par <span style="color:red">&lt;embed></span> ou <span style="color:red">&lt;object></span>).</li><li>L'adresse web du vid o YouTube ou Google Video (comman ant par <span style="color:red">http://...</span>)</li></ul>
+
+
+		<textarea id="insCode_area" cols="20" rows="15" style="width:100%;height:70px;"></textarea>-->
+  
+		
+	</body>
+</html>

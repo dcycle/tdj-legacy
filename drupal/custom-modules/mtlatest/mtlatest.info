@@ -1,0 +1,4 @@
+; $Id: pathfilter.info,v 1.1.2.2.2.1 2008/02/19 19:56:53 jbrown Exp $
+name = Latest posts
+description = "Provide a list of latest posts."
+core = 6.x

@@ -1,0 +1,5 @@
+name = broadcast_multisite
+description = broadcasts information about multisite installations
+dependencies[] = multisite_api
+core = 6.x
+

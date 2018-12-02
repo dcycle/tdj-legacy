@@ -1,0 +1,2 @@
+[18-Oct-2008 07:55:36] PHP Fatal error:  Class 'Tag' not found in /home/qumbiaca/public_html/sites/all/modules/mtfilter/fastform/fastform.php on line 6
+[18-Oct-2008 09:25:28] PHP Fatal error:  Class 'fformbot_Object' not found in /home/qumbiaca/public_html/sites/all/modules/mtfilter/fastform/fastformcreator_Form.php on line 3

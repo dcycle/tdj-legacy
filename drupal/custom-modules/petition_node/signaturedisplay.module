@@ -1,0 +1,288 @@
+<?php
+// $Id: signaturedisplay.module,v 1.1.2.9 2009/10/25 12:39:25 gauvain Exp $
+
+/**
+* @file
+* Provides different signature dipslay layouts to be use by a petition node
+* 
+* @author Samuel Gauvain <gauvain@kth.se>
+*/
+
+
+/**
+* implementation of hook_signaturedisplay_info().
+* STEP 1: define the display modes.
+* You can also create your own module to define other dispaly modes.
+*/
+function signaturedisplay_signaturedisplay_info() {
+
+ $signaturedisplay_info['OnlyNamesNotSortable'] = array(
+   'name' => t('Only Displays the Names in the signature order - Not sortable. Not choosable fields'),
+   'default' => FALSE, // If True, the petition nodes created on the website will have this display mode as the default
+   'callback' => 'OnlyNamesNotSortable_display' // Name of the function that returns the signatures
+   );
+ 
+ $signaturedisplay_info['AplhabeticalNotSortable'] = array(
+   'name' => t('Alphabetical Order - Not sortable. Not choosable fields'),
+   'default' => FALSE, // If True, the petition nodes created on the website will have this display mode as the default
+   'callback' => 'AplhabeticalNotSortable_display' // Name of the function that returns the signatures
+   );
+ 
+ $signaturedisplay_info['AplhabeticalSortable'] = array(
+   'name' => t('Alphabetical Order - sortable table'),
+   'default' => FALSE, // If True, the petition nodes created on the website will have this display mode as the default
+   'callback' => 'AplhabeticalSortable_display' // Name of the function that returns the signatures
+   );
+
+  return $signaturedisplay_info;
+}
+
+/**
+*Callback functions.
+*STEP 2 a: write the callback functions corresponding to the display modes defined in step 1.
+*It can be smart as in this case to call a theme function
+*/
+function OnlyNamesNotSortable_display($node) {
+   return theme('OnlyNamesNotSortable_display', $node);
+}
+
+function AplhabeticalNotSortable_display($node) {
+   return theme('AplhabeticalNotSortable_display', $node);
+}
+
+function AplhabeticalSortable_display($node) {
+   return theme('AplhabeticalSortable_display', $node);
+}
+
+
+/**
+* implementation of hook_theme().
+* The dispaly modes added in this module should be customized in the theme directory
+* STEP 2 b: make the functions from step 2a themable. This is recommendable.
+*/
+function signaturedisplay_theme() {
+  return array(
+     'OnlyNamesNotSortable_display' =>array(
+      'arguments' => array('node' => NULL),
+      ),
+     'AplhabeticalNotSortable_display' =>array(
+      'arguments' => array('node' => NULL),
+      ),
+     'AplhabeticalSortable_display' =>array(
+      'arguments' => array('node' => NULL),
+      ),
+  );
+}
+
+/**
+*Theme functions.
+*STEP 2 c: we write the theme functions to the themable functions declared in STEP 2c.
+*This is where the final output is rendered.
+*/
+
+/**
+*Theme function for the OnlyNamesNotSortable display mode
+*/
+function theme_OnlyNamesNotSortable_display($node) {
+ //add css
+ drupal_add_css(drupal_get_path('module', 'signaturedisplay') .'/signaturedisplay.css', 'module', 'all', FALSE);
+ 
+  // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SIGNATURES TO APPEAR UNDER ALL THE TRANSLATIONS
+   if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+ 
+ // Because the names are closer to each other, we want to have thrice as many signatures per page as if it was the table version
+ $max = variable_get('petition_signature_number', 50) * 3;
+ 
+ // Set the title for the drupal page
+ $title = t('Signatures for the petition : ') . check_plain($node->title);
+ drupal_set_title($title);
+ 
+ // SQL pager query
+ $sql = "SELECT * FROM {petition_signatures} WHERE nid = %d AND confirmed = 1 ORDER BY  position ASC"; 
+ $result = pager_query($sql , $max, 0, NULL, $nid);
+ 
+ //Return the output from the SQL result. check the name of the petition_sigantures columns to be certain your get the right variable
+ $output = '';
+ while ($signature = db_fetch_object($result)) {
+  $output .= '<span class="signature"><span class="signature_position">   '.check_plain($signature->position).') </span><span class="signature_lastname">'.strtoupper(check_plain($signature->name)).',</span><span class="signature_firstname"> '.check_plain($signature->firstname).'. </span></span>';
+ }
+ 
+ // If there are no signatures, we return a message to inform there are no signatures
+ If ($output == '') {
+ return t('There are no signatures for this petition');
+ }
+ else {
+ $output .= theme('pager', NULL, $max, 0);
+ return $output;
+ }	
+}
+
+
+/**
+*Theme function for the AplhabeticalNotSortable display mode
+*/
+function theme_AplhabeticalNotSortable_display($node) {
+ //add css
+ drupal_add_css(drupal_get_path('module', 'signaturedisplay') .'/signaturedisplay.css', 'module', 'all', FALSE);
+ 
+  // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SIGNATURES TO APPEAR UNDER ALL THE TRANSLATIONS
+   if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+ 
+ 
+ // Set the title for the drupal page
+ $title = t('Signatures for the petition : ') . check_plain($node->title);
+ drupal_set_title($title);
+ 
+ //Get the current letter
+ $currentletter = check_plain($_GET['l']); 
+ $currentletter = $currentletter == '' ? 'a' : $currentletter;
+ 
+ // Output to display an alphabetical list. User clicks on a letter to see all the petitioners whose first letter begins with it
+ $alphabet = "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z";
+ $letters = explode(",", $alphabet);
+ 
+ $alphabet_output = '<div class="alphabet_output">';
+ $i = 0;
+ foreach ($letters as $letter) {
+  $extra = $i > 0 ? ' - ' : '';
+  $i++;
+  $class = $letter == $currentletter ? 'marked' : 'unmarked';
+  $alphabet_output .= $extra. l(strtoupper($letter), check_plain($_GET['q']), array('query' => 'l='.$letter, 'attributes' => array('class' => $class))) ;
+ }
+ $alphabet_output .= '</div>';
+ 
+ 
+ // SQL query returning the names starting with the currentletter
+ $sql = "SELECT * FROM {petition_signatures} WHERE nid = %d AND confirmed = 1 AND name LIKE '%s%%%' ORDER BY NAME ASC"; 
+ $result = db_query($sql, $nid , $currentletter);
+ 
+ //Return the output from the SQL result. check the name of the petition_sigantures columns to be certain your get the right variable
+ $output = '';
+ while ($signature = db_fetch_object($result)) {
+  $output .= '<span class="signature"><span class="signature_lastname">'.strtoupper(check_plain($signature->name)).',</span><span class="signature_firstname"> '.check_plain($signature->firstname).'. </span></span>';
+ }
+ 
+ // If there are no signatures, we return a message to inform there are no signatures
+ If ($output == '') {
+ return  $alphabet_output . '<div class="signature_area">'. t('There are no petitioners whose name start with '). strtoupper($currentletter) . '</div>';
+ }
+ else {
+  $output = $alphabet_output . '<div class="signature_area">'.$output. '</div>';
+  $output .= theme('pager', NULL, $max, 0);
+  return $output;
+ }	
+}
+
+/**
+*Theme function for the AplhabeticalSortable display mode
+*/
+function theme_AplhabeticalSortable_display($node) {
+ //add css
+ drupal_add_css(drupal_get_path('module', 'signaturedisplay') .'/signaturedisplay.css', 'module', 'all', FALSE);
+ 
+  // IMPORTANT FOR TRANSLATION MODE. WE WANT THE SIGNATURES TO APPEAR UNDER ALL THE TRANSLATIONS
+   if(is_numeric($node->tnid) AND $node->tnid>0 AND $node->nid!= $node->tnid) {
+    $nid = $node->tnid;
+  } else {
+    $nid =  $node->nid; 
+  }
+ 
+ //basic info for pager layout
+ $max=variable_get('petition_signature_number', 50);
+ 
+ // Set the title for the drupal page
+ $title = t('Signatures for the petition : ') . check_plain($node->title);
+ drupal_set_title($title);
+ 
+ //Get the current letter
+ $currentletter = check_plain($_GET['l']); 
+ $currentletter = $currentletter == '' ? 'a' : $currentletter;
+ 
+ // Output to display an alphabetical list. User clicks on a letter to see all the petitioners whose first letter begins with it
+ $alphabet = "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z";
+ $letters = explode(",", $alphabet);
+ 
+ $alphabet_output = '<div class="alphabet_output">';
+ $i = 0;
+ foreach ($letters as $letter) {
+  $extra = $i > 0 ? ' - ' : '';
+  $i++;
+  $class = $letter == $currentletter ? 'marked' : 'unmarked';
+  $alphabet_output .= $extra. l(strtoupper($letter), check_plain($_GET['q']), array('query' => 'l='.$letter, 'attributes' => array('class' => $class))) ;
+ }
+ $alphabet_output .= '</div>';
+ 
+ 
+ 
+ // Preparing the table header and columns according to the fields given in the node form
+ $fields = $node->display_fields;
+ $field_array = array('position' => t(' '), 'name' => t('Surname'), 'firstname' => t('First name'), 'title' => t('Other (activity, status etc)'), 'address' => t('Address'), 'zip' => t('ZIP code'), 'town' => t('Town'), 'country' => t('Country'), 'tel' => t('Phone number'), 'email' => t('Email'), 'canbe_informed' => t('Accept to be informed of the campaign'), 'language' => t('language'));
+ $header = array();
+ $i=0;
+ foreach ($fields as $field) {
+  if(!empty($field)){
+   $header[$i] = $i <1 ? array('data' =>  $field_array[$field], 'field' => $field, 'sort' => 'asc') : array('data' =>  $field_array[$field], 'field' => $field);
+   $i++;
+   if ($field == 'country') {
+    $header[$i] = '';
+    $i++;
+   }
+  }
+ }
+ 
+  // SQL query returning the pager query with possibility to sort in a table
+ $sql = "SELECT * FROM {petition_signatures} WHERE nid = %d AND confirmed = 1  AND name LIKE '%s%%%'";
+ $tablesort = tablesort_sql($header);
+ $result = pager_query($sql . tablesort_sql($header), $max, 0, NULL, $nid, $currentletter);
+ 
+ while ($signature = db_fetch_object($result)) {
+  $data_array = array();
+  $i=0;
+  
+  foreach($fields as $field) {
+    if (!empty($field)) {
+      if ($field == 'country') {
+        if (module_exists("countryicons") AND module_exists("countries_api")) {
+          $url = countryicons_get_icon_path(strtolower($signature->$field));
+          $src = url($url, array('language'=>$url));
+          $country = db_result(db_query("SELECT name from {countries_api_countries} where iso2 = '%s'", $signature->$field));
+          $attribs = array('width' => 14, 'height' => 14, 'alt' => "$cc", 'title' => "$country");
+          $flag = '<img src="'. check_url($url)  .'" '. drupal_attributes($attribs) .' />';
+        }
+        else {
+         $country = $signature->country; $flag='';
+        }
+        $data_array[$i] = $country;
+        $i++;
+        $data_array[$i] = $flag;
+        $i++;
+       }
+    else {
+      $data_array[$i] = check_plain($signature->$field);
+      $i++;
+    }
+   }
+  }
+  $rows[] = array('data' => $data_array);   
+  
+ }
+ 
+ 
+ // If there are no signatures, we return a message to inform there are no signatures
+ If (count($rows)==0) {
+ return  $alphabet_output . '<div class="signature_area">'. t('There are no petitioners whose name start with '). strtoupper($currentletter) . '</div>';
+ }
+ else {
+  $output = $alphabet_output . '<div class="signature_area">'.theme('table', $header, $rows). '</div>';
+  $output .= theme('pager', NULL, $max, 0);
+  return $output;
+ }	
+}

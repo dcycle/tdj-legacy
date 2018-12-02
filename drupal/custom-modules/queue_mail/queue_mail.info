@@ -1,0 +1,13 @@
+; $Id: queue_mail.info,v 1.2.2.1 2008/10/27 15:00:56 kbahey Exp $
+name = Queue Mail
+core = 6.x
+package = Mail
+dependencies[] = job_queue
+description = Queues all mail send by your Drupal site so that it is sent via cron, using the job queue. This is helpful for large traffic sites where sending a lot of emails per page request can slow things down considerably.
+
+; Information added by drupal.org packaging script on 2009-09-08
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "queue_mail"
+datestamp = "1252369411"
+

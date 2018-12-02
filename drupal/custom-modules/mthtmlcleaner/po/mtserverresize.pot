@@ -1,0 +1,53 @@
+# v. 100a100
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2007-04-25 12:52+0200\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: mtserverresize.module:28
+msgid "mtserverresize."
+msgstr ""
+
+#: mtserverresize.module:31;56
+msgid "mtserverresize."
+msgstr ""
+
+#: mtserverresize.module:45;85
+msgid "mt filter"
+msgstr ""
+
+#: mtserverresize.module:91
+msgid "mtserverresize to"
+msgstr ""
+
+#: mtserverresize.module:92
+msgid "mtserverresize"
+msgstr ""
+
+#: mtserverresize.module:92
+msgid "mtserverresize"
+msgstr ""
+
+#: mtserverresize.module:94
+msgid "mtserverresize"
+msgstr ""
+
+#: mtserverresize.info:0
+msgid "mtfilte Filter"
+msgstr ""
+
+#: mtserverresize.info:0
+msgid "mtserverresize."
+msgstr ""
+
+#: mtserverresize.info:0
+msgid "mtserverresize"
+msgstr ""
+

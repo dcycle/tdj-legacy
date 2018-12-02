@@ -1,0 +1,4 @@
+; $Id$
+name = Translate Contact Form
+description = "Allows you to tanslate the description of your contact form, defined on the settings page of the contact module. Also adds an edit link on the contact form for authorized users."
+core = 6.x

@@ -1,0 +1,4 @@
+; $Id$
+name = "TDJ"
+description = "Various TDJ stuff."
+core = 6.x

@@ -1,0 +1,135 @@
+<?php
+/* $Id$ */
+
+function x_ui_perm() {
+  return array('view exception details as they happen', 'view exception list');
+}
+
+/**
+* Implementation of hook_menu().
+*/
+function x_ui_menu() {
+  $items = array();
+
+  $items['x'] = array(
+	'title' => t('Exception Report'),
+	'page callback' => 'x_ui_page',
+	'access arguments' => array('view exception list'),
+	'type' => MENU_CALLBACK
+  );
+  
+  return $items;
+}
+
+	/*
+		Returns a page.
+		
+		If there are no arguments:
+			a list of all exceptions.
+				
+		If arg(1) is a valid exception and is in the database, show an exception in a visually relevant manner
+	*/
+function x_ui_page() {
+  try {
+    $theExceptionNumber = x_ui_page_check_arg();
+
+    if(!$theExceptionNumber) {
+      $r = x_ui_page_overview();
+    } else {
+      $r = x_ui_display_exception_number($theExceptionNumber);
+    }
+  } catch(Exception $e) {
+    $r = theme('x_exception', $e);
+  }
+  
+  return $r;
+}
+
+function x_ui_page_check_arg() {
+  $theArg = arg(1);
+  
+  if(x_api_valid_id($theArg)) {
+    $r = $theArg;
+  }
+  
+  return $r;
+}
+
+ 	/*
+ 		returns a list of exceptions.
+ 	*/
+function x_ui_page_overview() {
+  $header = array(
+    array('data' => t('Exception ID')),
+    array('data' => t('Time'), 'sort' => 'desc'),
+    array('data' => t('Text')),
+  );
+
+  $theExceptionList = x_api_get_exception_list();
+
+  while($theExceptionLine = $theExceptionList->GetNext()) {
+    $theId = $theExceptionLine->GetId();
+    $theDate = $theExceptionLine->GetDate();
+    $theText = $theExceptionLine->GetTeaser();
+    
+    $theRows[] = array($theId, $theDate, $theText);
+  }
+
+  $output .= theme('table', $header, $theRows);
+
+  return $output;
+}
+
+	/*
+		returns a displayed exception from the number
+	*/
+function x_ui_display_exception_number($aNumber) {
+  $theException = x_api_exception_number_to_exception_object();
+  
+  $r = x_ui_display_exception($theException);
+  
+  return $r;
+}
+
+	/*
+		returns a displayed exception from an actual exception object
+	*/
+function x_ui_display_exception($aException) {
+  try {
+    if($aException instanceof Exception) {
+      $aException = x_api_exception_to_line($aException);
+    }
+
+    if(false) {
+      $r = t('Sorry, an error occured, and technical staff has been notified');
+    
+      $theEmailMessage = 'details: http://qumbia.ca/x/' . $aException->GetId();
+     
+      $theSubject = '[x] ' . $aException->GetTeaser();
+
+  	  $to = x_config::GetTechEmail();
+ 	  $headers = 'From:no-reply-x-module@' . x_config::GetServer();
+
+ 	  mail($to, $theSubject, $theEmailMessage, $headers);
+    } else {
+      $r = theme('x_exception', $aException);
+    }
+  } catch(Exception $e) {
+    $r = t('Sorry, an exception occured while trying to display an exception');
+    
+    $r .= theme('x_exception', $e);
+    
+    return $r;
+  }
+  
+  return $r;
+}
+
+function x_ui_theme() {
+  return array(
+    'x_exception' => array(
+      'template' => 'exception',
+      'arguments' => array('exception_object' => NULL),
+    )
+  );
+}

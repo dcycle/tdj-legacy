@@ -1,0 +1,14 @@
+This file is a development diary for the drupal module transate_contact_form
+
+24-mar-09
+
+A short description
+-------------------
+
+This module allows you to tanslate the description of your contact form, defined on the settings page of the contact module. Also adds an edit link on the contact form for authorized users.. 
+
+When Drupal is installed, the contact form states "You can leave a message using the contact form below.". If you don't modify that text, it is translated by the contact module. For each active language, this module adds a text area in the settings page of the contact module, so you can translate the text.
+
+An API is also provided for other modules to translate the text (for example, a translation workflow system might want to access the translated text directly).
+
+Sponsored by http://mediatribe.net

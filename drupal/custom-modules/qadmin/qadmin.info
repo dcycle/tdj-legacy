@@ -1,0 +1,4 @@
+; $Id$
+name = Qadmin
+description = "General purpose system to manage your web presence."
+core = 6.x

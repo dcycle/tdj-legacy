@@ -1,0 +1,12 @@
+; $Id: node_export_serialize.info,v 1.1.2.4 2010/12/09 07:28:44 danielb Exp $
+name = Node export serialize
+description = "Adds serialize format to Node export"
+dependencies[] = node_export
+core = 6.x
+package = "Node export"
+; Information added by drupal.org packaging script on 2011-01-03
+version = "6.x-3.x-dev"
+core = "6.x"
+project = "node_export"
+datestamp = "1294057149"
+

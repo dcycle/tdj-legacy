@@ -1,0 +1,3 @@
+name = "Kill if gte mso"
+description = "This filter attempts to get rid of bizarre if gte mso code that gets inserted when pasting from Microsoft Word into FCK Editor."
+core = "6.x"

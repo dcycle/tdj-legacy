@@ -1,0 +1,17 @@
+<?php
+/* $Id$ */
+
+function simplify_node_edit_form_alter(&$form, $form_state, $form_id) {
+  switch($form_id) {
+    case 'blog_node_form':
+      simplify_node_form(&$form, $form_state);
+      break;
+    default:
+      break;
+  }
+}
+
+function simplify_node_form(&$form, $form_state) {
+ /* $form['simplify_tab'] = array('#type' => 'textfield', '#weight' => -99999999999999);
+  $form['options']['#attributes'] = array('class' => 'advanced_form_elem'); */
+}

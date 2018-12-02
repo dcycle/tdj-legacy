@@ -1,0 +1,7 @@
+; $Id$
+
+name = X UI
+
+description = User interface to interact with the X API.
+
+core = 6.x

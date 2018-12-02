@@ -1,0 +1,5 @@
+name = latest_watchdog
+description = Broadcasts the time of the latest watchdog incident
+dependencies[] = dblog
+core = 6.x
+

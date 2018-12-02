@@ -1,0 +1,57 @@
+<?php
+// $Id: comment_alter_taxonomy.install,v 1.4 2009/01/26 18:31:01 damz Exp $
+
+/**
+ * @file
+ * Installation functions for comment_alter_taxonomy.
+ */
+
+function comment_alter_taxonomy_install() {
+  // Create the database tables.
+  drupal_install_schema('comment_alter_taxonomy');
+
+  // Set weight of comment_alter_taxonomy module to be heavier than taxonomy module.
+  db_query("UPDATE {system} SET weight = 1 WHERE name = 'comment_alter_taxonomy'");
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function comment_alter_taxonomy_uninstall() {
+  // Remove the database tables.
+  drupal_uninstall_schema('comment_alter_taxonomy');
+
+  // Delete settings variables.
+  variable_del('comment_alter_taxonomy_vocabularies');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function comment_alter_taxonomy_schema() {
+  $schema['comment_alter_taxonomy'] = array(
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The {node}.nid of the node.',
+      ),
+      'cid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The {comment}.cid of the comment.',
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The {term_data}.tid of a term.',
+      ),
+    ),
+    'primary key' => array('nid', 'cid', 'tid'),
+  );
+  return $schema;
+}
+

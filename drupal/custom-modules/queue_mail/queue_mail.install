@@ -1,0 +1,56 @@
+<?php
+// $Id: queue_mail.install,v 1.1.4.2 2009/09/07 16:08:42 kbahey Exp $
+
+define('DRUPAL_SMTP_LIBRARY', 'smtp_library');
+
+function queue_mail_library_path() {
+  return @drupal_get_path('module', 'queue_mail') . '/queue_mail.inc';
+}
+
+function _queue_mail_req() {
+  $req = array();
+
+  $req['queue_mail'] = array(
+    'title' => t('Queue mail'),
+    'value' => DRUPAL_SMTP_LIBRARY,
+    );
+
+  return $req;
+}
+
+function queue_mail_requirements($phase) {
+  $req = _queue_mail_req();
+
+  $lib = variable_get(DRUPAL_SMTP_LIBRARY, '');
+  $our_lib = queue_mail_library_path();
+  if (!$lib) {
+    $req['queue_mail']['severity'] = REQUIREMENT_OK;
+    $req['queue_mail']['description'] = t('The variable "smtp_library" is not set. The queue mail will set it to "!lib" so that emails go out via job queue at cron time.', array( '!lib' => $lib));
+    return $req;
+  }
+
+  if ($lib == $our_lib) {
+    $req['queue_mail']['severity'] = REQUIREMENT_OK;
+    $req['queue_mail']['description'] = t('The variable "smtp_library" is set to "!lib". This means queue mail will be the one sending emails out via job queue at cron time.', array( '!lib' => $lib));
+    return $req;
+  }
+  else {
+    $req['queue_mail']['severity'] = REQUIREMENT_ERROR;
+    $req['queue_mail']['description'] = t('The variable "smtp_library" is set to "!lib". This means another module is using another smtp_library. Please beware that this can cause emails not to be sent properly. Please unset the "smtp_library" manually, or disable the module that uses it, then disable and reenable this module.', array( '!lib' => $lib));
+    return $req;
+  }
+}
+
+function queue_mail_enable() {
+  $lib = variable_get(DRUPAL_SMTP_LIBRARY, '');
+  if ($lib) {
+    drupal_set_message(t('The variable "smtp_library" is set to !lib. This means another module is using another smtp_library. Please beware that this can cause emails not to be sent properly. Please unset the "smtp_library" manually, or disable the module that uses it, then disable and reenable this module.', array( '!lib' => $lib)), 'error');
+  }
+  else {
+    variable_set(DRUPAL_SMTP_LIBRARY, queue_mail_library_path());
+  }
+}
+
+function queue_mail_disable() {
+  variable_set(DRUPAL_SMTP_LIBRARY, '');
+}

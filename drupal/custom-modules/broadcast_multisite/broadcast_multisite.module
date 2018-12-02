@@ -1,0 +1,96 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * TODO: Enter file description here.
+ */
+
+function broadcast_multisite_perm() {
+  return array('administer broadcast_multisite');
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function broadcast_multisite_menu() { 
+  // This is the minimum information you can provide for a menu item.
+  $items['broadcast'] = array(
+    'title' => 'Content Broadcast (this is never displayed because broadcast_multisite_page_broadcast() should kill execution before the page is generated. This is our method for displaying xml and nothing else',
+    'page callback' => 'broadcast_multisite_page_broadcast',
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+function broadcast_multisite_page_broadcast() {
+  $key = variable_get('broadcast_multisite_key', rand(100000000000000, 999999999999999));
+
+  $add_key = false;
+  if(user_access('administer broadcast_multisite')) {
+    $add_key = true;
+  } else if(arg(1) != $key) {
+    drupal_access_denied();
+  }
+
+  if(module_exists('multisite_api')) {
+    $assoc_array = multisite_api_site_list();
+  } else {
+    $assoc_array = array('error' => 'multisite_api module is not available; please install it', );
+  }
+  
+  if($add_key) {
+    $assoc_array['key'] = $key;
+  }
+  
+  echo serialize($assoc_array);
+  die();
+}
+
+/**
+ * Build A XML Data Set
+ *
+  taken from http://stackoverflow.com/questions/99350/php-associative-arrays-to-and-from-xml
+ 
+ * @param array $data Associative Array containing values to be parsed into an XML Data Set(s)
+ * @param string $startElement Root Opening Tag, default fx_request
+ * @param string $xml_version XML Version, default 1.0
+ * @param string $xml_encoding XML Encoding, default UTF-8
+ * @return string XML String containig values
+ * @return mixed Boolean false on failure, string XML result on success
+ */
+function broadcast_multisite_build_xml($data, $startElement = 'fx_request', $xml_version = '1.0', $xml_encoding = 'UTF-8'){
+  if(!is_array($data)){
+     $err = 'Invalid variable type supplied, expected array not found on line '.__LINE__." in Class: ".__CLASS__." Method: ".__METHOD__;
+     trigger_error($err);
+     if($this->_debug) echo $err;
+     return false; //return false error occurred
+  }
+  $xml = new XmlWriter();
+  $xml->openMemory();
+  $xml->startDocument($xml_version, $xml_encoding);
+  $xml->startElement($startElement);
+
+  /**
+   * Write XML as per Associative Array
+   * @param object $xml XMLWriter Object
+   * @param array $data Associative Data Array
+   */
+  function write(XMLWriter $xml, $data){
+      foreach($data as $key => $value){
+          if(is_array($value)){
+              $xml->startElement($key);
+              write($xml, $value);
+              $xml->endElement();
+              continue;
+          }
+          $xml->writeElement($key, $value);
+      }
+  }
+  write($xml, $data);
+
+  $xml->endElement();//write end element
+  //Return the XML results
+  return $xml->outputMemory(true); 
+}

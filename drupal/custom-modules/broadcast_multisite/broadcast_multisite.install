@@ -1,0 +1,24 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * TODO: Enter file description here.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function broadcast_multisite_install() {
+  variable_set('broadcast_multisite_key', rand(100000000000000, 999999999999999));
+}
+
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function broadcast_multisite_uninstall() {
+  variable_del('broadcast_multisite_key');
+}
+
+

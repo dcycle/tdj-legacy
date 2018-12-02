@@ -1,0 +1,12 @@
+; $Id: invoice.info,v 1.1.2.4 2009/01/02 21:24:23 pvogelaar Exp $
+name = Invoice
+description = "Module to create invoices"
+core = 6.x
+version = "6.x-1.x-dev"
+
+; Information added by drupal.org packaging script on 2009-01-02
+version = "6.x-1.0"
+core = "6.x"
+project = "invoice"
+datestamp = "1230931832"
+

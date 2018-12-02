@@ -1,0 +1,5 @@
+; $Id$
+name = Site Duplicator
+description = A Freshray module which will let you duplicate a Drupal site.
+core = 6.x
+package = "FreshRay"

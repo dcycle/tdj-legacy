@@ -1,0 +1,211 @@
+<?php 
+// $Id$
+
+  /*
+    Implementation of hook_help().
+  */
+function translate_contact_form_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case "admin/help#translate_contact_form":
+      $output = '<p>'.  t('Allows you to tanslate the additional information of your contact form, defined on the settings page of the contact module.') .'</p>';
+      break;
+  }
+  return $output;
+}
+
+  /*
+    translate_contact_form_get_translation()
+    
+    Will provide the description text.
+    
+    By default, provides the text in the current language. You can also ask for the description in any other language as defined by a two-letter code.
+    
+    $options (array), an associative array with the following possible values:
+    
+      'language' => 
+      		'default' (the default site language), 
+      		'current' (the current language) (this is the value of default)
+      		[any two-letter language code]
+      		      		
+  */
+function translate_contact_form_get_translation($options = array()) {
+  global $language;
+  
+    // set the requested language to current if undefined.
+  switch($options['language']) {
+    case 'default':
+      $theLanguage = language_default('language');
+      break;
+    case 'current':
+    case null:
+      $theLanguage = $language->language;
+      break;
+    default:
+      $theLanguage = $options['language'];
+      break;
+  }
+  
+  	// now we know which language we want. Let's get the string.
+  	
+  	// if the language is the current site language, just return the contact_form_information variable.
+  if($theLanguage == language_default('language')) {
+    $r .= variable_get('contact_form_information', t('You can leave a message using the contact form below.', array(), $theLanguage));
+  }
+
+    // if we haven't found anything, try to fetch the language from the database
+  if(!$r) {
+    $theResult = db_query('SELECT text FROM {translate_contact_form} WHERE language = \'' . $theLanguage . '\'');
+  
+    $theResultO = db_fetch_object($theResult);
+    
+    $r .= $theResultO->text;
+  }
+  
+    // what if we have nothing still? Go through our fallbacks...
+  if(!$r) {
+    if(is_array($options['fallback'])) {
+      foreach($options['fallback'] as $thePotentialFallback) {
+        if($thePotentialFallback == $options['language']) {
+          continue; // we've done this already, don't do it again          
+        } else { 
+          $r = translate_contact_form_get_translation(array('language' => $thePotentialFallback));
+          
+          if($r) { 
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  return $r;
+}
+
+  /*
+    translate_contact_form_set_translation($aLang, $aText)
+    
+    Will save the description text in any language
+    
+	$aLang 
+		the language in which you want to save your text
+		
+	$aText
+		the text itself
+  */
+function translate_contact_form_set_translation($aLang, $aText) {
+  if($aLang == language_default('language')) {
+  	  // the default langauge is dealt with in the standard manner
+    variable_set('contact_form_information', $aText);
+  } else {
+      // must either update or create a new row, depending
+    db_query("INSERT INTO {translate_contact_form} (language, text) VALUES ('%s','%s') ON DUPLICATE KEY UPDATE text = '%s'", $aLang, $aText, $aText);
+  }
+}
+
+  /*
+    translate_contact_form_form_alter() 
+    
+    implements hook_form_alter()    
+  */
+function translate_contact_form_form_alter(&$form, $form_state, $form_id) {
+  switch($form_id) {
+    case 'contact_mail_page':
+      translate_contact_form_form_alter_contact_page($form, $form_state);
+      break;
+    case 'contact_admin_settings':
+      translate_contact_form_form_alter_contact_admin_page($form, $form_state);
+      break;
+    default:
+      break;
+  }
+}
+
+  /*
+    translate_contact_form_form_alter_contact_page() 
+    
+    Alter the contact form to show the correct language. Helper function used by translate_contact_form_form_alter(), above.
+    
+		$form 
+			Nested array of form elements that comprise the form.
+		$form_state 
+			A keyed array containing the current state of the form.
+  */
+function translate_contact_form_form_alter_contact_page(&$form, $form_state) {
+	// first of all, add an edit button here to make it easier to get to the edit section.
+  if(user_access('administer site-wide contact form')) {
+    $theText = '[' . l(t('Edit'), 'admin/build/contact/settings') . '] ';
+  }
+
+	// Let's now get the text that is the translation. Because we are not supplying any argument, we want the text in the site's current language.
+  $theText .= translate_contact_form_get_translation();
+
+  $form['contact_information']['#value'] = $theText;  
+}
+
+  /*
+    translate_contact_form_form_alter_contact_admin_page() 
+    
+    Alter the admin form to allow the administrator to enter several languages. Helper function used by translate_contact_form_form_alter(), above.
+
+		$form 
+			Nested array of form elements that comprise the form.
+		$form_state 
+			A keyed array containing the current state of the form.
+  */
+function translate_contact_form_form_alter_contact_admin_page(&$form, $form_state) {
+  $theDefaultLanguageO = language_default();
+  $theActiveLanguageOA = language_list();
+
+  $form['contact_form_information']['#title'] = t('Additional information') . ' (' . t($theDefaultLanguageO->name) . ')';
+
+  foreach($theActiveLanguageOA as $theActiveLanguageO) {
+      // ignore the default language which already exists in the system
+      
+    if($theActiveLanguageO->language != $theDefaultLanguageO->language) {
+      $theFieldId = 'contact_form_information_' . $theActiveLanguageO->language;
+
+        // we'll just copy the existing field and change stuff
+      $form[$theFieldId] = $form['contact_form_information'];
+      
+        // put this field near the default field
+      $form[$theFieldId]['#weight'] = 0;
+
+        // title and default value
+      $form[$theFieldId]['#title'] = t('Additional information') . ' (' . t($theActiveLanguageO->name) . ')';
+
+      $form[$theFieldId]['#default_value'] = translate_contact_form_get_translation(array('language' => ($theActiveLanguageO->language)));
+    }
+  }
+
+  $form['#after_build'][] = 'translate_contact_form_process_contact_admin_page';
+}
+
+
+  /*
+    translate_contact_form_process_contact_admin_page() 
+    
+    Save the contact information from the admin form once it has been processed. Helper function used by translate_contact_form_form_alter_contact_admin_page(), above.
+
+		$form 
+			Nested array of form elements that comprise the form.
+		$form_state 
+			A keyed array containing the current state of the form.
+  */
+function translate_contact_form_process_contact_admin_page(&$form, &$form_state) {
+  $theDefaultLanguageO = language_default();
+  $theActiveLanguageOA = language_list();
+
+  foreach($theActiveLanguageOA as $theActiveLanguageO) {
+  
+      // ignore the default language which already exists in the system
+    if($theActiveLanguageO->language != $theDefaultLanguageO->language) {
+      $theFieldId = 'contact_form_information_' . $theActiveLanguageO->language;
+
+	  translate_contact_form_set_translation($theActiveLanguageO->language, $form[$theFieldId]['#value']);
+    }
+  }
+
+  return $form;
+}
+

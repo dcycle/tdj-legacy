@@ -1,0 +1,15 @@
+name = Project releases
+description = Provides a release node type to represent releases of projects.
+package = Project
+dependencies[] = project
+dependencies[] = taxonomy
+dependencies[] = upload
+dependencies[] = views
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-09-25
+version = "6.x-1.0-alpha5"
+core = "6.x"
+project = "project"
+datestamp = "1316932012"
+

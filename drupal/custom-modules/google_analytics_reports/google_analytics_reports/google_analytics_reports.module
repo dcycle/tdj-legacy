@@ -1,0 +1,165 @@
+<?php
+/**
+ * @file
+ * Front-end interfaces that use the Google Analytics API module.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function google_analytics_reports_menu() {
+  $items['admin/reports/google-analytics'] = array(
+    'title' => 'Google Analytics Summary',
+    'page callback' => 'google_analytics_reports_summary_page',
+    'access arguments' => array('access google analytics reports'),
+    'file' => 'google_analytics_reports.pages.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/reports/google-analytics/detail'] = array(
+    'title' => 'Content Detail',
+    'page callback' => 'google_analytics_reports_detail_page',
+    'access arguments' => array('access google analytics reports'),
+    'file' => 'google_analytics_reports.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['google-analytics-reports/ajax/path-mini'] = array(
+    'title' => 'Page traffic',
+    'page callback' => 'google_analytics_reports_path_mini_ajax',
+    'access arguments' => array('access google analytics reports'),
+    'file' => 'google_analytics_reports.blocks.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['google-analytics-reports/ajax/summary'] = array(
+    'title' => 'Page traffic',
+    'page callback' => 'google_analytics_reports_summary_ajax',
+    'access arguments' => array('access google analytics reports'),
+    'file' => 'google_analytics_reports.blocks.inc',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_block().
+ */
+function google_analytics_reports_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+    case 'list':
+      $blocks['path_mini']['info'] = t('Google Analytics page traffic');
+      $blocks['summary']['info'] = t('Google Analytics summary');
+      return $blocks;
+    case 'view':
+      drupal_add_js(drupal_get_path('module', 'google_analytics_reports') . '/google_analytics_reports.js', 'module', 'footer', FALSE, TRUE, FALSE);
+      drupal_add_css(drupal_get_path('module', 'google_analytics_reports') . '/google_analytics_reports.css', 'module', 'all', FALSE);
+      switch ($delta) {
+        case 'path_mini':
+          $block['subject'] = t('Page traffic');
+          $block['content'] = '<div class="google-analytics-reports-path-mini"></div>';
+          return $block;
+        case 'summary':
+          $block['subject'] = t('Google Analytics Summary');
+          $block['content'] = '<div class="google-analytics-reports-summary"></div>';
+          return $block;
+      }
+  }
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function google_analytics_reports_perm() {
+  return array('access google analytics reports', 'administer google analytics reports');
+}
+
+/**
+ * Implements hook_theme().
+ */
+function google_analytics_reports_theme() {
+  return array(
+    'google_analytics_reports_summary' => array(
+      'arguments' => array('summary' => NULL),
+      'template' => 'google_analytics_reports_summary',
+      'file' => 'google_analytics_reports.theme.inc',
+    ),
+    'google_analytics_reports_detail' => array(
+      'arguments' => array('report' => NULL),
+      'template' => 'google_analytics_reports_detail',
+      'file' => 'google_analytics_reports.theme.inc',
+    ),
+    'google_analytics_reports_path_mini' => array(
+      'arguments' => array('report' => NULL),
+      'file' => 'google_analytics_reports.theme.inc',
+    ),
+  );
+}
+
+/*
+ * Return a list of paths that are aliased with the given path (including the given path).
+ */
+function _google_analytics_reports_path_aliases($node_path = NULL) {
+  // Default path is the current path.
+  if ($node_path == NULL) {
+    $node_path = $_GET['q'];
+  }
+
+  // Get the normal node path if it is a node.
+  $node_path = drupal_get_normal_path($node_path);
+
+  // Grab all aliases.
+  $aliases = array($node_path);
+  $result = db_query("SELECT * FROM {url_alias} WHERE src = '%s'", $node_path);
+  while ($row = db_fetch_array($result)) {
+    $aliases[] = $row['dst'];
+  }
+
+  // If this is the front page, add the base path too, and index.php for good measure.
+  // There may be other ways that the user is accessing the front page but we can't
+  // account for them all.
+  if ($node_path == drupal_get_normal_path(variable_get('site_frontpage', 'node'))) {
+    $aliases[] = '';
+    $aliases[] = 'index.php';
+  }
+
+  return $aliases;
+}
+
+/*
+ * Construct a filter string that grabs pagePaths corresponding to the specified node or path.
+ */
+function _google_analytics_reports_path_filter($node_path = NULL) {
+  $aliases = _google_analytics_reports_path_aliases($node_path);
+
+  // Okay, this is ridiculous.  Google Analytics regex filters
+  // have a limit of 32 characters.  Therefore we can't simply
+  // create one filter per pagePath.  Instead we are going too
+  // do a "contains substring" match on the path, and then take
+  // as many of the ending characters paired with ([?#].*)?$. If
+  // this will all fit in one regex under 32 characters then so
+  // be it.  Return a string if they all do, or an array if not.
+
+  // 32 - 12 = 20 characters maximum for alias
+  $under_filters = array();
+  $over_filters = array();
+  foreach ($aliases as $alias) {
+    if (strlen($alias) <= 20) {
+      $under_filters[] = 'pagePath=~^/' . $alias . '([?#].*)?$';
+    }
+    else {
+      $over_filters[] = array(
+        'pagePath=@/' . $alias,
+        // 32 - 10 = 22 characters
+        'pagePath=~' . substr($alias, -22) . '([?#].*)?$'
+      );
+    }
+  }
+
+  // Add pipes and put together under and over filters.
+  $filters = array();
+  if ($under_filters) {
+    $filters[] = implode(' || ', $under_filters);
+  }
+  foreach ($over_filters as $filter) {
+    $filters[] = implode(' && ', $filter);
+  }
+  return $filters;
+}
